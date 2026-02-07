@@ -5,7 +5,7 @@
   "license": "ISC",
   "author": "team 6",
   "main": "index.js",
-  "types": "module",
+  "type": "module",
   "scripts": {
     "dev": "nodemon src/index.js",
     "test": "echo \"Error: no test specified\" && exit 1"

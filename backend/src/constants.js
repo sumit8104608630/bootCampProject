@@ -1,5 +1,3 @@
 let dataBaseName="studyBuddy";
 
-module.exports={
-    dataBaseName
-}
+export {dataBaseName}

@@ -9,6 +9,7 @@ import { authStore } from './store/userAuth.store.js';
 import Login from './pages/Login.jsx';
 import SignUpPage from './pages/SignUpPage.jsx';
 import Dashboard from './pages/Dashboard.jsx';
+import ForgotPasswordFlow from './pages/ForgotPasswordFlow.jsx';
 
 // eslint-disable-next-line react-refresh/only-export-components
 const App = () => {
@@ -32,7 +33,7 @@ const App = () => {
         {/* Auth routes */}
         <Route path="/login" element={!authUser ? <Login /> : <Navigate to="/dashboard" replace />} />
         <Route path="/signup" element={!authUser ? <SignUpPage /> : <Navigate to="/dashboard" replace />} />
-
+        <Route path='/forgotPassword' Component={!authUser?ForgotPasswordFlow:<Navigate to="/dashboard" replace />}/>
         {/* Protected dashboard */}
         <Route path="/dashboard" element={authUser ? <Dashboard /> : <Navigate to="/login" replace />} />
 

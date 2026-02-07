@@ -261,7 +261,7 @@ const WeeklySummaryPage = () => {
 
         {/* Achievements Section */}
         <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
-          <h3 className="text-xl font-bold text-gray-900 mb-6">🎉 Achievements Unlocked</h3>
+          <h3 className="text-xl font-bold text-gray-900 mb-6">Achievements Unlocked</h3>
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {data.achievements.map((achievement) => (

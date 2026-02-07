@@ -76,7 +76,7 @@ export default function Dashboard() {
             {/* Welcome Section */}
             <div className="mb-6 sm:mb-8">
               <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 mb-2">
-                Welcome back, {authUser?.name || 'User'}! 👋
+                Welcome back, {authUser?.name || 'User'}
               </h1>
               <p className="text-gray-500 text-base sm:text-lg">Here's your study overview for today</p>
             </div>
@@ -239,7 +239,7 @@ export default function Dashboard() {
             <div className="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center">
               <BookOpen className="w-7 h-7 text-white" />
             </div>
-            <span className="text-2xl font-bold text-gray-900">StudyBuddy</span>
+            <span className="text-2xl font-bold text-gray-900">Study Manager</span>
           </div>
           <button
             className="lg:hidden text-gray-600 hover:bg-gray-100 p-2 rounded-lg transition-colors"
