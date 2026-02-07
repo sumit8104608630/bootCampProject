@@ -10,6 +10,7 @@ import Login from './pages/Login.jsx';
 import SignUpPage from './pages/SignUpPage.jsx';
 import Dashboard from './pages/Dashboard.jsx';
 import ForgotPasswordFlow from './pages/ForgotPasswordFlow.jsx';
+import ErrorPage from './pages/Error.jsx';
 
 // eslint-disable-next-line react-refresh/only-export-components
 const App = () => {
