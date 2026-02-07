@@ -39,7 +39,7 @@ const App = () => {
         <Route path="/dashboard" element={authUser ? <Dashboard /> : <Navigate to="/login" replace />} />
 
         {/* Redirect all unknown routes */}
-        <Route path="*" element={<ErrorPage />} />
+        <Route path="/*" element={<ErrorPage />} />
       </Routes>
     </Router>
   );
