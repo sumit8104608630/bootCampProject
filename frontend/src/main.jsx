@@ -10,7 +10,6 @@ import Login from './pages/Login.jsx';
 import SignUpPage from './pages/SignUpPage.jsx';
 import Dashboard from './pages/Dashboard.jsx';
 import ForgotPasswordFlow from './pages/ForgotPasswordFlow.jsx';
-import ErrorPage from './pages/Error.jsx';
 
 // eslint-disable-next-line react-refresh/only-export-components
 const App = () => {
@@ -39,7 +38,7 @@ const App = () => {
         <Route path="/dashboard" element={authUser ? <Dashboard /> : <Navigate to="/login" replace />} />
 
         {/* Redirect all unknown routes */}
-        <Route path="/*" element={<ErrorPage />} />
+        <Route path="*" element={<Navigate to={authUser ? "/dashboard" : "/login"} replace />} />
       </Routes>
     </Router>
   );
