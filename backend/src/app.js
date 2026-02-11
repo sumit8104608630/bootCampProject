@@ -22,9 +22,15 @@ app.use(cookieParser());
 
 // Default Route
 import userRoutes from "../routes/user.routes.js";
+import dailyPlanRoutes from "../routes/dailyPlan.routes.js";
 import subjectRoutes from "../routes/subject.routes.js"
+import emailRoutes from "../routes/email.routes.js"
+
 app.use("/user", userRoutes);
 app.use("/subject",subjectRoutes)
+app.use("/email",emailRoutes);
+app.use("/dailyPlan",dailyPlanRoutes);
+
 
 // Export server for index.js or main file
 export default server;

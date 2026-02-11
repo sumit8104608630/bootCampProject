@@ -52,6 +52,11 @@ const getCompletionStatus = (percentage) => {
   }
 };
 
+// Calculate weekly hours from daily hours
+const calculateWeeklyHours = (hoursPerDay) => {
+  return (hoursPerDay * 7).toFixed(1);
+};
+
 export default function SubjectsPage() {
   const { addingSubject, allSubjects, fetchingSubjects, getAllSubjects, addingLoad } = subjectStore();
   console.log(allSubjects);
@@ -62,8 +67,8 @@ export default function SubjectsPage() {
   const [uploading, setUploading] = useState(false);
   const [formData, setFormData] = useState({
     subjectName: '',
-    hoursPerWeek: '',
     hoursPerDay: '',
+    hoursPerWeek: '',
     completionDate: '',
     color: '#6366f1',
     attachments: []
@@ -78,6 +83,17 @@ export default function SubjectsPage() {
   useEffect(() => {
     getAllSubjects();
   }, []);
+
+  // Auto-calculate weekly hours when daily hours change
+  useEffect(() => {
+    if (formData.hoursPerDay) {
+      const weeklyHours = calculateWeeklyHours(formData.hoursPerDay);
+      setFormData(prev => ({
+        ...prev,
+        hoursPerWeek: weeklyHours
+      }));
+    }
+  }, [formData.hoursPerDay]);
 
   // Close form with Escape key
   useEffect(() => {
@@ -159,7 +175,7 @@ export default function SubjectsPage() {
   };
 
   const handleSubmit = async () => {
-    if (!formData.subjectName || !formData.hoursPerWeek || !formData.completionDate) {
+    if (!formData.subjectName || !formData.hoursPerDay || !formData.completionDate) {
       alert('Please fill in all required fields');
       return;
     }
@@ -174,8 +190,8 @@ export default function SubjectsPage() {
       // Reset form
       setFormData({
         subjectName: '',
-        hoursPerWeek: '',
         hoursPerDay: '',
+        hoursPerWeek: '',
         completionDate: '',
         color: '#6366f1',
         attachments: []
@@ -191,8 +207,8 @@ export default function SubjectsPage() {
   const handleCancel = () => {
     setFormData({
       subjectName: '',
-      hoursPerWeek: '',
       hoursPerDay: '',
+      hoursPerWeek: '',
       completionDate: '',
       color: '#6366f1',
       attachments: []
@@ -204,8 +220,8 @@ export default function SubjectsPage() {
   const handleEdit = (subject) => {
     setFormData({
       subjectName: subject.subjectName,
-      hoursPerWeek: subject.hoursPerWeek,
       hoursPerDay: subject.hoursPerDay || '',
+      hoursPerWeek: subject.hoursPerWeek || '',
       completionDate: subject.completionDate,
       color: subject.color,
       attachments: subject.attachments || []
@@ -312,26 +328,25 @@ export default function SubjectsPage() {
                   />
                 </div>
 
-                {/* Hours per Week */}
+                {/* Completion Date - MOVED TO SECOND POSITION */}
                 <div>
                   <label className="block text-gray-700 font-medium mb-2 sm:mb-3 text-sm sm:text-base">
-                    Hours per Week
+                    Target Completion Date
                   </label>
                   <input
-                    type="number"
-                    value={formData.hoursPerWeek}
-                    onChange={(e) => setFormData({ ...formData, hoursPerWeek: e.target.value })}
-                    placeholder="10"
+                    type="date"
+                    value={formData.completionDate}
+                    onChange={(e) => setFormData({ ...formData, completionDate: e.target.value })}
                     className="w-full px-3 sm:px-4 py-2.5 sm:py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm sm:text-base"
-                    min="1"
+                    required
                     disabled={addingLoad}
                   />
                 </div>
 
-                {/* Hours per Day */}
+                {/* Hours per Day - NOW THIRD, PRIMARY INPUT */}
                 <div>
                   <label className="block text-gray-700 font-medium mb-2 sm:mb-3 text-sm sm:text-base">
-                    Hours per Day (optional)
+                    Hours per Day
                   </label>
                   <input
                     type="number"
@@ -343,21 +358,32 @@ export default function SubjectsPage() {
                     min="0.5"
                     disabled={addingLoad}
                   />
+                  <p className="text-xs text-gray-500 mt-1">
+                    How many hours you'll study this subject daily
+                  </p>
                 </div>
 
-                {/* Completion Date */}
+                {/* Hours per Week - NOW AUTO-CALCULATED AND READ-ONLY */}
                 <div>
                   <label className="block text-gray-700 font-medium mb-2 sm:mb-3 text-sm sm:text-base">
-                    Completion Date
+                    Hours per Week
                   </label>
-                  <input
-                    type="date"
-                    value={formData.completionDate}
-                    onChange={(e) => setFormData({ ...formData, completionDate: e.target.value })}
-                    className="w-full px-3 sm:px-4 py-2.5 sm:py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm sm:text-base"
-                    required
-                    disabled={addingLoad}
-                  />
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={formData.hoursPerWeek || (formData.hoursPerDay ? calculateWeeklyHours(formData.hoursPerDay) : '')}
+                      placeholder="Auto-calculated"
+                      className="w-full px-3 sm:px-4 py-2.5 sm:py-3 border border-gray-300 rounded-xl bg-gray-50 text-gray-700 text-sm sm:text-base cursor-not-allowed"
+                      disabled
+                      readOnly
+                    />
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {formData.hoursPerDay 
+                      ? `Automatically calculated: ${formData.hoursPerDay}h/day × 7 days`
+                      : 'Will be calculated based on daily hours'
+                    }
+                  </p>
                 </div>
 
                 {/* Color */}
@@ -569,11 +595,12 @@ export default function SubjectsPage() {
           </div>
         )}
 
-        {/* Subjects Grid - WITH COMPLETION STATUS COLORS */}
+        {/* Subjects Grid */}
         {!fetchingSubjects && allSubjects.length > 0 && !showAddForm && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
             {allSubjects.map((subject) => {
               const status = getCompletionStatus(subject.completionPercentage || 0);
+              const dailyHours = subject.hoursPerDay || (subject.hoursPerWeek / 7).toFixed(1);
               
               return (
                 <div
@@ -630,10 +657,13 @@ export default function SubjectsPage() {
                     
                     {/* Subject details */}
                     <div className="space-y-1.5 text-sm text-gray-600 mb-4">
-                      <p className="font-medium">Weekly: {subject.hoursPerWeek}h</p>
-                      {subject.hoursPerDay && (
-                        <p>Daily: {subject.hoursPerDay}h</p>
-                      )}
+                      <p className="font-medium">Daily: {dailyHours}h</p>
+                      <p>
+                        Weekly: {subject.hoursPerWeek}h
+                        {!subject.hoursPerDay && (
+                          <span className="text-xs text-gray-500 ml-1">(auto)</span>
+                        )}
+                      </p>
                       <p>Studied: {subject.totalHoursStudied || 0}h</p>
                       {subject.completionDate && (
                         <div 

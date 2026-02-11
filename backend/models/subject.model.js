@@ -88,3 +88,5 @@ SubjectSchema.set("toObject", { virtuals: true });
 
 const Subject = mongoose.model("Subject", SubjectSchema);
 export default Subject;
+
+

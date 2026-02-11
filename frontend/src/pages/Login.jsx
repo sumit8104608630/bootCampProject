@@ -35,7 +35,7 @@ const Login = () => {
           
           <div className="space-y-4">
             <h2 className="text-4xl font-bold text-gray-900 leading-tight">
-              Welcome back! 👋
+              Welcome back
             </h2>
             <p className="text-lg text-gray-600">
               Sign in to continue your learning journey and access your personalized study plans.
