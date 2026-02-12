@@ -32,15 +32,29 @@ const createDailyPlan = asyncHandler(async (req, res) => {
 
 // Update Task Progress
 const updateTaskProgress = asyncHandler(async (req, res) => {
-  const { date, subjectId, studiedHours, timerSeconds, completed, timerRunning } = req.body;
+  const {
+    date,
+    subjectId,
+    studiedHours,   // total hours studied so far (already includes live elapsed)
+    timerSeconds,   // total seconds (already includes live elapsed)
+    completed,
+    timerRunning,   // boolean: is the timer being started or stopped?
+  } = req.body;
+
   const { id } = req.user;
 
-  // Validate required fields
-  if (!date || !subjectId || studiedHours === undefined || timerSeconds === undefined) {
+  // ── Validation ─────────────────────────────────────────────────────────────
+  if (
+    !date ||
+    !subjectId ||
+    studiedHours === undefined ||
+    timerSeconds === undefined ||
+    timerRunning === undefined
+  ) {
     throw new apiError("Missing required fields", 400);
   }
 
-  // Find the daily plan first to get the old studiedHours
+  // ── Fetch existing plan ────────────────────────────────────────────────────
   const existingPlan = await dailyPlan.findOne({
     userId: id,
     date,
@@ -51,36 +65,37 @@ const updateTaskProgress = asyncHandler(async (req, res) => {
     throw new apiError("Daily plan or task not found", 404);
   }
 
-  // Get the old studiedHours for this task
   const existingTask = existingPlan.tasks.find(
     (t) => t.subjectId.toString() === subjectId.toString()
   );
-  const oldStudiedHours = existingTask ? existingTask.studiedHours : 0;
 
-  // Calculate the difference
+  const oldStudiedHours = existingTask ? existingTask.studiedHours : 0;
   const hoursDifference = studiedHours - oldStudiedHours;
 
-  // Update the daily plan task
+  // ── Decide timerStartedAt ──────────────────────────────────────────────────
+  // If the timer is being STARTED → stamp now.
+  // If the timer is being STOPPED  → clear the stamp.
+  const timerStartedAt = timerRunning ? new Date() : null;
+
+  // ── Update the task inside the plan ────────────────────────────────────────
   const plan = await dailyPlan.findOneAndUpdate(
-    {
-      userId: id,
-      date,
-      "tasks.subjectId": subjectId,
-    },
+    { userId: id, date, "tasks.subjectId": subjectId },
     {
       $set: {
         "tasks.$.studiedHours": studiedHours,
         "tasks.$.timerSeconds": timerSeconds,
         "tasks.$.completed": completed,
+        "tasks.$.timerRunning": timerRunning,
+        "tasks.$.timerStartedAt": timerStartedAt,
       },
     },
     { new: true }
   );
 
-  // Recalculate stats
+  // ── Recalculate plan-level stats ───────────────────────────────────────────
   const updatedStats = {
-    totalPlanned: plan.tasks.reduce((sum, t) => sum + t.plannedHours, 0),
-    totalStudied: plan.tasks.reduce((sum, t) => sum + t.studiedHours, 0),
+    totalPlanned: plan.tasks.reduce((sum, t) => sum + (t.plannedHours || 0), 0),
+    totalStudied: plan.tasks.reduce((sum, t) => sum + (t.studiedHours || 0), 0),
     totalTasks: plan.tasks.length,
     completedTasks: plan.tasks.filter((t) => t.completed).length,
   };
@@ -88,36 +103,39 @@ const updateTaskProgress = asyncHandler(async (req, res) => {
   plan.stats = updatedStats;
   await plan.save();
 
-  // Update Subject's totalHoursStudied ONLY when timer is stopped/paused or completed
-  // NOT when timer is still running (to avoid duplicate updates)
+  // ── Update Subject.totalHoursStudied on STOP / COMPLETE only ──────────────
+  // We never update while the timer is running to avoid double-counting.
   let updatedSubject = null;
-  const shouldUpdateSubject = (timerRunning === false || completed === true) && hoursDifference !== 0;
-  
+  const shouldUpdateSubject =
+    timerRunning === false && hoursDifference !== 0;
+
   if (shouldUpdateSubject) {
     updatedSubject = await Subject.findOne({ _id: subjectId, userId: id });
-    
     if (updatedSubject) {
-      updatedSubject.totalHoursStudied += hoursDifference;
+      updatedSubject.totalHoursStudied = Math.max(
+        0,
+        (updatedSubject.totalHoursStudied || 0) + hoursDifference
+      );
       await updatedSubject.save();
     }
   }
 
-  return res
-    .status(200)
-    .json(
-      new apiResponse(
-        200,
-        { 
-          subjectId, 
-          studiedHours, 
-          timerSeconds, 
-          completed, 
-          stats: updatedStats,
-          totalHoursStudied: updatedSubject?.totalHoursStudied
-        },
-        "Task progress updated successfully"
-      )
-    );
+  return res.status(200).json(
+    new apiResponse(
+      200,
+      {
+        subjectId,
+        studiedHours,
+        timerSeconds,
+        completed,
+        timerRunning,
+        timerStartedAt,
+        stats: updatedStats,
+        totalHoursStudied: updatedSubject?.totalHoursStudied,
+      },
+      "Task progress updated successfully"
+    )
+  );
 });
 
 // Get Today's Daily Plan
