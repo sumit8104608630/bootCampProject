@@ -92,19 +92,7 @@ const subjectsData = [
     "createdAt": "2026-02-11T11:41:05.054Z",
     "updatedAt": "2026-02-12T12:27:44.374Z"
   },
-  {
-    "_id": "698c75258fd4df44a1ba22b0",
-    "userId": "698c73a28fd4df44a1ba2273",
-    "subjectName": "Advance Java",
-    "hoursPerWeek": 49,
-    "hoursPerDay": 7,
-    "color": "#ef4444",
-    "attachments": [],
-    "totalHoursStudied": 0,
-    "completionDate": "2026-02-16T00:00:00.000Z",
-    "createdAt": "2026-02-11T12:25:09.904Z",
-    "updatedAt": "2026-02-11T17:21:57.948Z"
-  }
+
 ];
 
 const WeeklySummary = () => {
