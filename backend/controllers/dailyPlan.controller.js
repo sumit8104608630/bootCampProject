@@ -124,7 +124,7 @@ const updateTaskProgress = asyncHandler(async (req, res) => {
     new apiResponse(
       200,
       {
-        //fxv
+        
         subjectId,
         studiedHours,
         timerSeconds,

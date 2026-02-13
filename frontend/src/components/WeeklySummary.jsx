@@ -1,109 +1,66 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Calendar, TrendingUp, Clock, Award, Target, ChevronLeft, ChevronRight, BarChart3, CheckCircle, AlertCircle } from 'lucide-react';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-
-// Sample data - replace with your actual data
-const dailyData = [
-  {
-    "_id": "698cb9dd7b2acfe759966412",
-    "date": "2026-02-11",
-    "userId": "698c73a28fd4df44a1ba2273",
-    "dayName": "Wednesday",
-    "createdAt": "2026-02-11T17:18:21.387Z",
-    "updatedAt": "2026-02-11T17:30:11.833Z",
-    "stats": {
-      "totalPlanned": 7,
-      "totalStudied": 1,
-      "totalTasks": 1,
-      "completedTasks": 0
-    },
-    "tasks": [
-      {
-        "_id": "698cb9dd958bc20e8622e831",
-        "subjectId": "698c75258fd4df44a1ba22b0",
-        "subjectName": "Advance Java",
-        "color": "#ef4444",
-        "plannedHours": 7,
-        "studiedHours": 1,
-        "timerSeconds": 8,
-        "startTime": "10:46 PM",
-        "endTime": "05:46 AM",
-        "completed": false,
-        "timerRunning": false
-      }
-    ]
-  },
-  {
-    "_id": "698dc1e77b2acfe759966413",
-    "date": "2026-02-12",
-    "userId": "698c54f8a8363ffe499895df",
-    "dayName": "Thursday",
-    "createdAt": "2026-02-12T12:04:55.467Z",
-    "updatedAt": "2026-02-12T12:27:44.364Z",
-    "stats": {
-      "totalPlanned": 2,
-      "totalStudied": 0.1581,
-      "totalTasks": 1,
-      "completedTasks": 0
-    },
-    "tasks": [
-      {
-        "_id": "698dc1e7f8681bc2148f5d4a",
-        "subjectId": "698c6ad18fd4df44a1ba222d",
-        "subjectName": "java",
-        "color": "#6366f1",
-        "plannedHours": 2,
-        "studiedHours": 0.1581,
-        "timerSeconds": 569,
-        "startTime": "05:28 PM",
-        "endTime": "07:28 PM",
-        "completed": false,
-        "timerRunning": false,
-        "timerStartedAt": null
-      }
-    ]
-  }
-];
-
-const subjectsData = [
-  {
-    "_id": "698c60288fd4df44a1ba21c9",
-    "userId": "698c54f8a8363ffe499895df",
-    "subjectName": "rajiv",
-    "hoursPerWeek": 3.5,
-    "hoursPerDay": 0.5,
-    "color": "#ec4899",
-    "attachments": [{}],
-    "totalHoursStudied": 0,
-    "completionDate": "2026-02-26T00:00:00.000Z",
-    "createdAt": "2026-02-11T10:55:36.530Z",
-    "updatedAt": "2026-02-11T10:55:36.530Z"
-  },
-  {
-    "_id": "698c6ad18fd4df44a1ba222d",
-    "userId": "698c54f8a8363ffe499895df",
-    "subjectName": "java",
-    "hoursPerWeek": 14,
-    "hoursPerDay": 2,
-    "color": "#6366f1",
-    "attachments": [{}],
-    "totalHoursStudied": 0.1593,
-    "completionDate": "2026-02-25T00:00:00.000Z",
-    "createdAt": "2026-02-11T11:41:05.054Z",
-    "updatedAt": "2026-02-12T12:27:44.374Z"
-  },
-
-];
+import axios from "../../utils/axios";
+import { subjectStore } from '../store/subjectAuth.store';
 
 const WeeklySummary = () => {
+  const [weeklyApiData, setWeeklyApiData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [subjectsData, setSubjectData] = useState([]);
   const [currentWeekOffset, setCurrentWeekOffset] = useState(0);
   const [selectedSubject, setSelectedSubject] = useState(null);
 
+  const { addingSubject, allSubjects, fetchingSubjects, getAllSubjects, addingLoad } = subjectStore();
+
+  // Fetch weekly data from API
+  useEffect(() => {
+    const fetchWeeklyData = async () => {
+      try {
+        setLoading(true);
+        const response = await axios.get('/week/weeklly_data'); // Adjust endpoint as needed
+        setWeeklyApiData(response.data.data);
+        console.log(response.data.data)
+        setError(null);
+      } catch (err) {
+        console.error('Error fetching weekly data:', err);
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchWeeklyData();
+  }, [currentWeekOffset]);
+
+  useEffect(() => {
+    getAllSubjects();
+  }, []);
+
+  useEffect(() => {
+    setSubjectData(allSubjects);
+  }, [fetchingSubjects, allSubjects]);
+
   // Process data for weekly summary
   const weeklyData = useMemo(() => {
+    if (!weeklyApiData || !weeklyApiData.plans) {
+      return {
+        weekStart: '',
+        weekEnd: '',
+        totalPlannedHours: 0,
+        totalStudiedHours: 0,
+        completionRate: 0,
+        subjects: [],
+        achievements: []
+      };
+    }
+
+    const dailyData = weeklyApiData.plans;
+
     // Calculate totals
-    const totalPlanned = dailyData.reduce((sum, day) => sum + day.stats.totalPlanned, 0);
-    const totalStudied = dailyData.reduce((sum, day) => sum + day.stats.totalStudied, 0);
+    const totalPlanned = weeklyApiData.weeklyStats?.totalPlanned || 0;
+    const totalStudied = weeklyApiData.weeklyStats?.totalStudied || 0;
     const completionRate = totalPlanned > 0 ? Math.round((totalStudied / totalPlanned) * 100) : 0;
 
     // Get unique subjects from daily data
@@ -145,15 +102,15 @@ const WeeklySummary = () => {
     });
 
     return {
-      weekStart: dailyData[0]?.date || '2026-02-11',
-      weekEnd: dailyData[dailyData.length - 1]?.date || '2026-02-12',
+      weekStart: weeklyApiData.weekRange?.start || '',
+      weekEnd: weeklyApiData.weekRange?.end || '',
       totalPlannedHours: totalPlanned,
       totalStudiedHours: totalStudied,
       completionRate,
       subjects,
       achievements: generateAchievements(dailyData, subjects)
     };
-  }, []);
+  }, [weeklyApiData]);
 
   // Generate achievements based on actual data
   function generateAchievements(dailyData, subjects) {
@@ -171,7 +128,7 @@ const WeeklySummary = () => {
 
     // Check if any subject exceeded target
     subjects.forEach(subject => {
-      if (subject.studiedHours >= subject.plannedHours) {
+      if (subject.studiedHours >= subject.plannedHours && subject.plannedHours > 0) {
         achievements.push({
           id: achievements.length + 1,
           title: 'Goal Crusher',
@@ -186,13 +143,15 @@ const WeeklySummary = () => {
 
   // Prepare chart data
   const dailyChartData = useMemo(() => {
-    return dailyData.map(day => ({
+    if (!weeklyApiData || !weeklyApiData.plans) return [];
+    
+    return weeklyApiData.plans.map(day => ({
       day: day.dayName.substring(0, 3),
       planned: day.stats.totalPlanned,
       studied: day.stats.totalStudied,
       date: new Date(day.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
     }));
-  }, []);
+  }, [weeklyApiData]);
 
   const subjectChartData = useMemo(() => {
     return weeklyData.subjects.map(subject => ({
@@ -212,6 +171,7 @@ const WeeklySummary = () => {
   }, [weeklyData.subjects]);
 
   const formatDate = (dateStr) => {
+    if (!dateStr) return '';
     return new Date(dateStr).toLocaleDateString('en-US', { 
       month: 'short', 
       day: 'numeric',
@@ -238,6 +198,44 @@ const WeeklySummary = () => {
   };
 
   const status = getCompletionStatus(weeklyData.completionRate);
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen p-6 bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading weekly data...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="min-h-screen p-6 bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+          <p className="text-gray-900 font-semibold mb-2">Error loading data</p>
+          <p className="text-gray-600">{error}</p>
+        </div>
+      </div>
+    );
+  }
+
+  // No data state
+  if (!weeklyApiData || !weeklyApiData.plans || weeklyApiData.plans.length === 0) {
+    return (
+      <div className="min-h-screen p-6 bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <Calendar className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+          <p className="text-gray-900 font-semibold mb-2">No data available</p>
+          <p className="text-gray-600">Start planning your study schedule to see your weekly summary!</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen p-6 bg-gray-50">
@@ -330,11 +328,11 @@ const WeeklySummary = () => {
 
         {/* Charts Section */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-          {/* Daily Progress Chart */}
+          {/* Daily Progress Line Chart with Dots */}
           <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
             <h3 className="text-xl font-bold text-gray-900 mb-6">Daily Progress</h3>
             <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={dailyChartData}>
+              <LineChart data={dailyChartData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                 <XAxis 
                   dataKey="day" 
@@ -354,9 +352,25 @@ const WeeklySummary = () => {
                   formatter={(value) => `${value.toFixed(2)}h`}
                 />
                 <Legend />
-                <Bar dataKey="planned" fill="#94a3b8" name="Planned" radius={[8, 8, 0, 0]} />
-                <Bar dataKey="studied" fill="#6366f1" name="Studied" radius={[8, 8, 0, 0]} />
-              </BarChart>
+                <Line 
+                  type="monotone" 
+                  dataKey="planned" 
+                  stroke="#94a3b8" 
+                  strokeWidth={2}
+                  name="Planned"
+                  dot={{ fill: '#94a3b8', strokeWidth: 2, r: 5 }}
+                  activeDot={{ r: 7 }}
+                />
+                <Line 
+                  type="monotone" 
+                  dataKey="studied" 
+                  stroke="#6366f1" 
+                  strokeWidth={2}
+                  name="Studied"
+                  dot={{ fill: '#6366f1', strokeWidth: 2, r: 5 }}
+                  activeDot={{ r: 7 }}
+                />
+              </LineChart>
             </ResponsiveContainer>
           </div>
 
@@ -385,18 +399,22 @@ const WeeklySummary = () => {
           </div>
         </div>
 
-        {/* Subject Comparison Chart */}
+        {/* Subject Comparison Line Chart */}
         <div className="bg-white rounded-2xl border border-gray-200 p-6 mb-6 shadow-sm">
           <h3 className="text-xl font-bold text-gray-900 mb-6">Subject Comparison</h3>
           <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={subjectChartData} layout="horizontal">
+            <LineChart data={subjectChartData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-              <XAxis type="number" tick={{ fill: '#6b7280', fontSize: 12 }} />
-              <YAxis 
+              <XAxis 
                 dataKey="name" 
-                type="category" 
                 tick={{ fill: '#6b7280', fontSize: 12 }}
-                width={120}
+                angle={-15}
+                textAnchor="end"
+                height={80}
+              />
+              <YAxis 
+                tick={{ fill: '#6b7280', fontSize: 12 }}
+                label={{ value: 'Hours', angle: -90, position: 'insideLeft', fill: '#6b7280' }}
               />
               <Tooltip 
                 contentStyle={{ 
@@ -408,9 +426,25 @@ const WeeklySummary = () => {
                 formatter={(value) => `${value.toFixed(2)}h`}
               />
               <Legend />
-              <Bar dataKey="planned" fill="#94a3b8" name="Planned" radius={[0, 8, 8, 0]} />
-              <Bar dataKey="studied" fill="#6366f1" name="Studied" radius={[0, 8, 8, 0]} />
-            </BarChart>
+              <Line 
+                type="monotone" 
+                dataKey="planned" 
+                stroke="#94a3b8" 
+                strokeWidth={2}
+                name="Planned"
+                dot={{ fill: '#94a3b8', strokeWidth: 2, r: 5 }}
+                activeDot={{ r: 7 }}
+              />
+              <Line 
+                type="monotone" 
+                dataKey="studied" 
+                stroke="#6366f1" 
+                strokeWidth={2}
+                name="Studied"
+                dot={{ fill: '#6366f1', strokeWidth: 2, r: 5 }}
+                activeDot={{ r: 7 }}
+              />
+            </LineChart>
           </ResponsiveContainer>
         </div>
 

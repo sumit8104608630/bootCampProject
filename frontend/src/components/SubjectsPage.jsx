@@ -59,7 +59,6 @@ const calculateWeeklyHours = (hoursPerDay) => {
 
 export default function SubjectsPage() {
   const { addingSubject, allSubjects, fetchingSubjects, getAllSubjects, addingLoad } = subjectStore();
-  console.log(allSubjects);
   
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
