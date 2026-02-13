@@ -195,7 +195,7 @@ const generateOtp = asyncHandler(async (req, res) => {
 
 
 const mailOptions = {
-  from: process.env.COMPANY_EMAIL,
+  from: process.env.SMTP_USERNAME,
   to: email,
   subject: 'Your OTP Code - Study Manager',
   html: `
