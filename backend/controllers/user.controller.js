@@ -4,6 +4,8 @@ import {apiError} from "../util/apiError.js"
 import User from "../models/user.model.js"
 import {uploadFile} from "../util/cloudinary.js"
 import redis from "redis";
+import dns from "dns";
+
 import crypto from "crypto";
 import nodemailer from "nodemailer"
 import { fileURLToPath } from "url"; // Import to define __dirname
@@ -173,13 +175,16 @@ const generateOtp = asyncHandler(async (req, res) => {
   await client.set(email, JSON.stringify(otpData), { EX: expireTime });
 
   // Send OTP to email
-  const transporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-      user: process.env.COMPANY_EMAIL,
-      pass: process.env.COMPANY_EMAIL_PASSWORD,
-    },
-  });
+const transporter = nodemailer.createTransport({
+  host: "smtp.gmail.com",
+  port: 587,
+  secure: false, // VERY IMPORTANT
+  auth: {
+    user: process.env.COMPANY_EMAIL,
+    pass: process.env.COMPANY_EMAIL_PASSWORD, // must be app password
+  },
+});
+
 
 
 const mailOptions = {
