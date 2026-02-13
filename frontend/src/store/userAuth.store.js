@@ -52,30 +52,29 @@ export const authStore = create((set, get) => ({
     }
   },
 
-  // User registration (name, email, password, profilePhoto)
-  signUp: async (formData, navigate) => {
-    try {
-      const uploadData = new FormData();
-      uploadData.append("name", formData.name);
-      uploadData.append("email", formData.email);
-      uploadData.append("password", formData.password);
-      if (formData.profilePhoto) {
-        uploadData.append("profilePhoto", formData.profilePhoto);
-      }
-
-      set({ isSigningUp: true });
-      const response = await axios.post("/user/register", uploadData, { withCredentials: true });
-
-      if (response.data.statusCode === 201) {
-        set({ isSigningUp: false });
-        navigate("/login");
-      }
-    } catch (error) {
-      set({ isSigningUp: false });
-      console.log("Sign up error:", error);
+signUp: async (formData, navigate) => {
+  try {
+    const uploadData = new FormData();
+    uploadData.append("name", formData.name);
+    uploadData.append("email", formData.email);
+    uploadData.append("password", formData.password);
+    if (formData.profilePhoto) {
+      uploadData.append("profilePhoto", formData.profilePhoto);
     }
-  },
 
+    set({ isSigningUp: true });
+    const response = await axios.post("/user/register", uploadData, { withCredentials: true });
+
+    if (response.data.statusCode === 201) {
+      set({ isSigningUp: false });
+      navigate("/login");
+    }
+  } catch (error) {
+    set({ isSigningUp: false });
+    console.log("Sign up error:", error);
+    throw error; // ← only change, lets SignUpPage catch it and show the red error
+  }
+},
 deleteActiveUser: async(userIdObj) => {
   if (!userIdObj || !userIdObj.authUserId || !userIdObj.selectedId) {
     console.error('Invalid user object for deletion', userIdObj);

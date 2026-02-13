@@ -29,8 +29,6 @@ const SignUpPage = () => {
   const [otpError, setOtpError] = useState('');
   const [otpLoading, setOtpLoading] = useState(false);
 
-  const API_BASE_URL = 'http://localhost:8000';
-
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -95,14 +93,14 @@ const SignUpPage = () => {
 
   const handleOtpChange = (index, value) => {
     if (value.length > 1) return;
-    
+
     // Only allow numbers
     if (value && !/^\d+$/.test(value)) return;
 
     const newOtp = [...otp];
     newOtp[index] = value;
     setOtp(newOtp);
-    
+
     if (value && index < 3) {
       document.getElementById(`otp-${index + 1}`)?.focus();
     }
@@ -132,8 +130,17 @@ const SignUpPage = () => {
 
       if (response.status === 200) {
         setOtpError('');
-        // Email verified successfully, now register the user
-        signUp(formData, navigate);
+        // Email verified — now register the user
+        try {
+          await signUp(formData, navigate);
+        } catch (signUpErr) {
+          // e.g. "Email already exists" from backend
+          setOtpError(
+            signUpErr.response?.data?.message ||
+            'Registration failed. Please try again.'
+          );
+          setOtpLoading(false); // stop spinner so user sees the error
+        }
       }
     } catch (err) {
       setOtpError(err.response?.data?.message || 'Invalid OTP. Please try again.');
@@ -148,7 +155,7 @@ const SignUpPage = () => {
     setOtp(['', '', '', '']);
 
     try {
-      const response = await axios.post(`${API_BASE_URL}/email/generate_otp`, {
+      const response = await axios.post(`/email/generate_otp`, {
         email: formData.email
       });
 
@@ -228,7 +235,7 @@ const SignUpPage = () => {
                 >
                   Resend Code
                 </button>
-                
+
                 <button
                   onClick={handleBackToForm}
                   disabled={otpLoading || isSigningUp}
@@ -277,7 +284,7 @@ const SignUpPage = () => {
                 <p className="text-sm text-gray-600">Set up your personal information</p>
               </div>
             </div>
-            
+
             <div className="flex items-start gap-4">
               <div className="w-12 h-12 rounded-xl bg-green-100 flex items-center justify-center flex-shrink-0">
                 <Mail className="w-6 h-6 text-green-600" />
@@ -287,7 +294,7 @@ const SignUpPage = () => {
                 <p className="text-sm text-gray-600">Confirm your email address</p>
               </div>
             </div>
-            
+
             <div className="flex items-start gap-4">
               <div className="w-12 h-12 rounded-xl bg-purple-100 flex items-center justify-center flex-shrink-0">
                 <CheckCircle className="w-6 h-6 text-purple-600" />

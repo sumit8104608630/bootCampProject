@@ -86,7 +86,7 @@ const user_login=asyncHandler(async(req,res)=>{
         }
         const user=await User.findOne({email});
         if(!user){
-            return res.status(400).json(new apiResponse(400,{},"Invalid phone number"));
+            return res.status(400).json(new apiResponse(400,{},"Invalid email"));
         }
        const token=await User.matchPasswordGenerateToken(email,password)
        if(token.success){
