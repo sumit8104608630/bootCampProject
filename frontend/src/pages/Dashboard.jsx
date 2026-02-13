@@ -12,7 +12,7 @@ export default function Dashboard() {
   const [activeMenu, setActiveMenu] = useState('Dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const { authUser, logout, deleteActiveUser } = authStore();
-  const {profileImageError,setProfileImageError}=useState(false)
+  const [profileImageError, setProfileImageError] = useState(false); // ✅ Fixed syntax
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -37,6 +37,7 @@ export default function Dashboard() {
     logout(navigate);
   };
 
+  
   const handleMenuClick = (label) => {
     setActiveMenu(label);
     setIsSidebarOpen(false);
@@ -219,6 +220,7 @@ export default function Dashboard() {
         );
     }
   };
+  
   return (
     <div className="min-h-screen bg-gray-50 flex">
       {/* Mobile Overlay */}
@@ -294,20 +296,22 @@ export default function Dashboard() {
           </button>
 
           <div className="flex items-center gap-3 ml-auto">
-            { profileImageError ? (
+            {/* ✅ Fixed Logic: Show profile photo if exists AND no error, otherwise show logo */}
+            {authUser?.profilePhoto && !profileImageError ? (
               <img
                 src={authUser.profilePhoto}
-                onError={(e)=>{
-                  setProfileImageError(true)
+                alt={authUser?.name || 'User'}
+                onError={() => {
+                  setProfileImageError(true);
                 }}
-                className="w-10 h-10 sm:w-12 sm:h-12 rounded-full object-cover"
+                className="w-10 h-10 sm:w-12 sm:h-12 rounded-full object-cover ring-2 ring-indigo-100"
               />
             ) : (
-      <div className="w-10 h-10 sm:w-12 sm:h-12 bg-indigo-600 rounded-full flex items-center justify-center shadow-md ring-2 ring-white">
-  <span className="text-white font-bold text-lg sm:text-xl uppercase">
-    {authUser?.name ? authUser.name.charAt(0).toUpperCase() : 'U'}
-  </span>
-</div>
+              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-indigo-600 rounded-full flex items-center justify-center shadow-md ring-2 ring-white">
+                <span className="text-white font-bold text-lg sm:text-xl uppercase">
+                  {authUser?.name ? authUser.name.charAt(0).toUpperCase() : 'U'}
+                </span>
+              </div>
             )}
             <span className="text-gray-900 font-medium hidden sm:inline">{authUser?.name || 'User'}</span>
             <button
