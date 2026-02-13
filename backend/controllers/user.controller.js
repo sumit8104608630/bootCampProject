@@ -8,6 +8,8 @@ import crypto from "crypto";
 import nodemailer from "nodemailer"
 import { fileURLToPath } from "url"; // Import to define __dirname
 // Define __dirname manually in ES module
+import { Resend } from 'resend'; 
+const resend = new Resend(process.env.RESEND_API_KEY); 
 
 const client = redis.createClient({
   url: process.env.REDIS_URL || 'redis://localhost:6379', // Adjust the URL based on your Redis setup
@@ -154,6 +156,79 @@ const getUserInfo=asyncHandler(async(req,res)=>{
 
 // email verification code ....
 
+// const generateOtp = asyncHandler(async (req, res) => {
+//   const { email } = req.body;
+//   if (!email) {
+//     throw new apiError('Please fill all the field', 400);
+//   }
+
+//   // Generate a more secure OTP
+//   const OTP = crypto.randomInt(1000, 9999);
+//   const expireTime = 1 * 60; // 1 minute expiration time (in seconds)
+
+//   const otpData = {
+//     otp: OTP.toString(),
+//     expiresAt: Date.now() + expireTime * 1000,
+//   };
+
+//   // Store OTP in Redis with email as the key and expiration time
+//   await client.set(email, JSON.stringify(otpData), { EX: expireTime });
+
+//   // Send OTP to email
+//   const transporter = nodemailer.createTransport({
+//     service: 'gmail',
+//     auth: {
+//       user: process.env.COMPANY_EMAIL,
+//       pass: process.env.COMPANY_EMAIL_PASSWORD,
+//     },
+//   });
+
+
+// const mailOptions = {
+//   from: process.env.COMPANY_EMAIL,
+//   to: email,
+//   subject: 'Your OTP Code - Study Manager',
+//   html: `
+//     <div style="font-family: Arial, sans-serif; max-width: 500px; margin: auto; padding: 20px; border: 1px solid #ddd; border-radius: 8px;">
+      
+//       <h2 style="text-align: center; color: #4f46e5;">Study Manager - OTP Verification</h2>
+
+//       <p style="color: #6b7280; font-size: 16px;">Dear User,</p>
+
+//       <p style="color: #6b7280; font-size: 16px;">
+//         Your One-Time Password (OTP) for verification is:
+//       </p>
+
+//       <div style="text-align: center; margin: 20px 0;">
+//         <span style="font-size: 24px; font-weight: bold; color: #4f46e5; border: 2px dashed #4f46e5; padding: 10px 20px; display: inline-block; border-radius: 4px;">
+//           ${OTP}
+//         </span>
+//       </div>
+
+//       <p style="color: #6b7280; font-size: 16px;">
+//         This OTP will expire in <strong style="color: #4f46e5;">1 minute</strong>. Please do not share it with anyone.
+//       </p>
+
+//       <p style="text-align: center; font-size: 14px; color: #6b7280; margin-top: 20px;">
+//         Thank you for using Study Manager!
+//       </p>
+//     </div>
+//   `,
+// };
+
+
+
+//   try {
+//     await transporter.sendMail(mailOptions);
+//     res.status(200).json(new apiResponse(200, '', 'OTP sent successfully'));
+//   } catch (err) {
+//     console.log(err);
+//     res.status(500).json(new apiError('Error sending email', 500));
+//   }
+// });
+
+
+
 const generateOtp = asyncHandler(async (req, res) => {
   const { email } = req.body;
   if (!email) {
@@ -172,52 +247,39 @@ const generateOtp = asyncHandler(async (req, res) => {
   // Store OTP in Redis with email as the key and expiration time
   await client.set(email, JSON.stringify(otpData), { EX: expireTime });
 
-  // Send OTP to email
-  const transporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-      user: process.env.COMPANY_EMAIL,
-      pass: process.env.COMPANY_EMAIL_PASSWORD,
-    },
-  });
-
-
-const mailOptions = {
-  from: process.env.COMPANY_EMAIL,
-  to: email,
-  subject: 'Your OTP Code - Study Manager',
-  html: `
-    <div style="font-family: Arial, sans-serif; max-width: 500px; margin: auto; padding: 20px; border: 1px solid #ddd; border-radius: 8px;">
-      
-      <h2 style="text-align: center; color: #4f46e5;">Study Manager - OTP Verification</h2>
-
-      <p style="color: #6b7280; font-size: 16px;">Dear User,</p>
-
-      <p style="color: #6b7280; font-size: 16px;">
-        Your One-Time Password (OTP) for verification is:
-      </p>
-
-      <div style="text-align: center; margin: 20px 0;">
-        <span style="font-size: 24px; font-weight: bold; color: #4f46e5; border: 2px dashed #4f46e5; padding: 10px 20px; display: inline-block; border-radius: 4px;">
-          ${OTP}
-        </span>
-      </div>
-
-      <p style="color: #6b7280; font-size: 16px;">
-        This OTP will expire in <strong style="color: #4f46e5;">1 minute</strong>. Please do not share it with anyone.
-      </p>
-
-      <p style="text-align: center; font-size: 14px; color: #6b7280; margin-top: 20px;">
-        Thank you for using Study Manager!
-      </p>
-    </div>
-  `,
-};
-
-
-
   try {
-    await transporter.sendMail(mailOptions);
+    await resend.emails.send({
+      from: 'Study Manager <onboarding@resend.dev>',
+      to: email,
+      subject: 'Your OTP Code - Study Manager',
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 500px; margin: auto; padding: 20px; border: 1px solid #ddd; border-radius: 8px;">
+          
+          <h2 style="text-align: center; color: #4f46e5;">Study Manager - OTP Verification</h2>
+
+          <p style="color: #6b7280; font-size: 16px;">Dear User,</p>
+
+          <p style="color: #6b7280; font-size: 16px;">
+            Your One-Time Password (OTP) for verification is:
+          </p>
+
+          <div style="text-align: center; margin: 20px 0;">
+            <span style="font-size: 24px; font-weight: bold; color: #4f46e5; border: 2px dashed #4f46e5; padding: 10px 20px; display: inline-block; border-radius: 4px;">
+              ${OTP}
+            </span>
+          </div>
+
+          <p style="color: #6b7280; font-size: 16px;">
+            This OTP will expire in <strong style="color: #4f46e5;">1 minute</strong>. Please do not share it with anyone.
+          </p>
+
+          <p style="text-align: center; font-size: 14px; color: #6b7280; margin-top: 20px;">
+            Thank you for using Study Manager!
+          </p>
+        </div>
+      `,
+    });
+
     res.status(200).json(new apiResponse(200, '', 'OTP sent successfully'));
   } catch (err) {
     console.log(err);
