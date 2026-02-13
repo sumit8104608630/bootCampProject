@@ -176,7 +176,7 @@ const generateOtp = asyncHandler(async (req, res) => {
 
   // Send OTP to email
   const transporter = nodemailer.createTransport({
-    service: 'gmail',
+    service: 'smtp.gmail.com',
     auth: {
       user: process.env.COMPANY_EMAIL,
       pass: process.env.COMPANY_EMAIL_PASSWORD,
