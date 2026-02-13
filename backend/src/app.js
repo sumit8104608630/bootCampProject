@@ -7,10 +7,10 @@ const app = express();
 const server = http.createServer(app);
 
 const origin = process.env.ORIGIN;
-
+const sec_orgin=process.env.SEC_ORIGIN;
 // Middleware
 app.use(cors({
-    origin: origin,
+    origin: [origin,sec_orgin],
     credentials: true,
 }));
 
