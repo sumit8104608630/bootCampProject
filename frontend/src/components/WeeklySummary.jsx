@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Calendar, TrendingUp, Clock, Award, Target, ChevronLeft, ChevronRight, BarChart3, CheckCircle, AlertCircle } from 'lucide-react';
-import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { Calendar, TrendingUp, Clock, Award, Target, ChevronLeft, ChevronRight, BarChart3, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import axios from "../../utils/axios";
 import { subjectStore } from '../store/subjectAuth.store';
 
@@ -19,9 +19,9 @@ const WeeklySummary = () => {
     const fetchWeeklyData = async () => {
       try {
         setLoading(true);
-        const response = await axios.get('/week/weeklly_data'); // Adjust endpoint as needed
+        const response = await axios.get('/week/weeklly_data');
         setWeeklyApiData(response.data.data);
-        console.log(response.data.data)
+        console.log(response.data.data);
         setError(null);
       } catch (err) {
         console.error('Error fetching weekly data:', err);
@@ -58,12 +58,10 @@ const WeeklySummary = () => {
 
     const dailyData = weeklyApiData.plans;
 
-    // Calculate totals
     const totalPlanned = weeklyApiData.weeklyStats?.totalPlanned || 0;
     const totalStudied = weeklyApiData.weeklyStats?.totalStudied || 0;
     const completionRate = totalPlanned > 0 ? Math.round((totalStudied / totalPlanned) * 100) : 0;
 
-    // Get unique subjects from daily data
     const subjectMap = new Map();
     dailyData.forEach(day => {
       day.tasks.forEach(task => {
@@ -83,7 +81,6 @@ const WeeklySummary = () => {
       });
     });
 
-    // Create daily breakdown for each subject
     const subjects = Array.from(subjectMap.values());
     subjects.forEach(subject => {
       const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
@@ -112,11 +109,9 @@ const WeeklySummary = () => {
     };
   }, [weeklyApiData]);
 
-  // Generate achievements based on actual data
   function generateAchievements(dailyData, subjects) {
     const achievements = [];
-    
-    // Check for consistency
+
     if (dailyData.length >= 3) {
       achievements.push({
         id: 1,
@@ -126,7 +121,6 @@ const WeeklySummary = () => {
       });
     }
 
-    // Check if any subject exceeded target
     subjects.forEach(subject => {
       if (subject.studiedHours >= subject.plannedHours && subject.plannedHours > 0) {
         achievements.push({
@@ -141,10 +135,9 @@ const WeeklySummary = () => {
     return achievements;
   }
 
-  // Prepare chart data
   const dailyChartData = useMemo(() => {
     if (!weeklyApiData || !weeklyApiData.plans) return [];
-    
+
     return weeklyApiData.plans.map(day => ({
       day: day.dayName.substring(0, 3),
       planned: day.stats.totalPlanned,
@@ -172,8 +165,8 @@ const WeeklySummary = () => {
 
   const formatDate = (dateStr) => {
     if (!dateStr) return '';
-    return new Date(dateStr).toLocaleDateString('en-US', { 
-      month: 'short', 
+    return new Date(dateStr).toLocaleDateString('en-US', {
+      month: 'short',
       day: 'numeric',
       year: 'numeric'
     });
@@ -199,19 +192,34 @@ const WeeklySummary = () => {
 
   const status = getCompletionStatus(weeklyData.completionRate);
 
-  // Loading state
+  // Custom tooltip for subject bar chart (uses each bar's own color)
+  const SubjectTooltip = ({ active, payload, label }) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="bg-white border border-gray-200 rounded-lg p-3 shadow-md">
+          <p className="font-semibold text-gray-900 mb-1">{label}</p>
+          {payload.map((entry, i) => (
+            <p key={i} style={{ color: entry.color }} className="text-sm">
+              {entry.name}: {Number(entry.value).toFixed(2)}h
+            </p>
+          ))}
+        </div>
+      );
+    }
+    return null;
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen p-6 bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
+          <Loader2 className="h-12 w-12 animate-spin text-indigo-600 mx-auto mb-4" />
           <p className="text-gray-600">Loading weekly data...</p>
         </div>
       </div>
     );
   }
 
-  // Error state
   if (error) {
     return (
       <div className="min-h-screen p-6 bg-gray-50 flex items-center justify-center">
@@ -224,7 +232,6 @@ const WeeklySummary = () => {
     );
   }
 
-  // No data state
   if (!weeklyApiData || !weeklyApiData.plans || weeklyApiData.plans.length === 0) {
     return (
       <div className="min-h-screen p-6 bg-gray-50 flex items-center justify-center">
@@ -278,7 +285,6 @@ const WeeklySummary = () => {
 
         {/* Stats Overview */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-          {/* Total Hours Studied */}
           <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
             <div className="flex items-center justify-between mb-2">
               <Clock className="w-8 h-8 text-indigo-600" />
@@ -289,11 +295,10 @@ const WeeklySummary = () => {
             <p className="text-xs text-gray-500 mt-1">of {weeklyData.totalPlannedHours}h planned</p>
           </div>
 
-          {/* Completion Rate */}
           <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
             <div className="flex items-center justify-between mb-2">
               <Target className="w-8 h-8 text-green-600" />
-              <div 
+              <div
                 className="px-2 py-1 rounded-full text-xs font-semibold"
                 style={{ backgroundColor: status.color + '20', color: status.color }}
               >
@@ -306,7 +311,6 @@ const WeeklySummary = () => {
             </p>
           </div>
 
-          {/* Subjects Count */}
           <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
             <div className="flex items-center justify-between mb-2">
               <BarChart3 className="w-8 h-8 text-purple-600" />
@@ -315,7 +319,6 @@ const WeeklySummary = () => {
             <p className="text-3xl font-bold text-gray-900">{weeklyData.subjects.length}</p>
           </div>
 
-          {/* Achievements */}
           <div className="bg-gradient-to-br from-yellow-400 to-orange-500 rounded-xl p-6 text-white shadow-lg">
             <div className="flex items-center justify-between mb-2">
               <Award className="w-8 h-8" />
@@ -328,53 +331,42 @@ const WeeklySummary = () => {
 
         {/* Charts Section */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-          {/* Daily Progress Line Chart with Dots */}
+          {/* Daily Progress — Grouped Bar Chart */}
           <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
             <h3 className="text-xl font-bold text-gray-900 mb-6">Daily Progress</h3>
             <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={dailyChartData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                <XAxis 
-                  dataKey="day" 
+              <BarChart data={dailyChartData} barCategoryGap="25%" barGap={4}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
+                <XAxis
+                  dataKey="day"
                   tick={{ fill: '#6b7280', fontSize: 12 }}
+                  axisLine={false}
+                  tickLine={false}
                 />
-                <YAxis 
+                <YAxis
                   tick={{ fill: '#6b7280', fontSize: 12 }}
                   label={{ value: 'Hours', angle: -90, position: 'insideLeft', fill: '#6b7280' }}
+                  axisLine={false}
+                  tickLine={false}
                 />
-                <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: 'white', 
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: 'white',
                     border: '1px solid #e5e7eb',
                     borderRadius: '8px',
                     padding: '8px'
                   }}
-                  formatter={(value) => `${value.toFixed(2)}h`}
+                  formatter={(value) => `${Number(value).toFixed(2)}h`}
+                  cursor={{ fill: '#f9fafb' }}
                 />
                 <Legend />
-                <Line 
-                  type="monotone" 
-                  dataKey="planned" 
-                  stroke="#94a3b8" 
-                  strokeWidth={2}
-                  name="Planned"
-                  dot={{ fill: '#94a3b8', strokeWidth: 2, r: 5 }}
-                  activeDot={{ r: 7 }}
-                />
-                <Line 
-                  type="monotone" 
-                  dataKey="studied" 
-                  stroke="#6366f1" 
-                  strokeWidth={2}
-                  name="Studied"
-                  dot={{ fill: '#6366f1', strokeWidth: 2, r: 5 }}
-                  activeDot={{ r: 7 }}
-                />
-              </LineChart>
+                <Bar dataKey="planned" name="Planned" fill="#94a3b8" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="studied" name="Studied" fill="#6366f1" radius={[4, 4, 0, 0]} />
+              </BarChart>
             </ResponsiveContainer>
           </div>
 
-          {/* Subject Distribution Pie Chart */}
+          {/* Study Time Distribution — Pie Chart (unchanged) */}
           <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
             <h3 className="text-xl font-bold text-gray-900 mb-6">Study Time Distribution</h3>
             <ResponsiveContainer width="100%" height={300}>
@@ -386,72 +378,54 @@ const WeeklySummary = () => {
                   labelLine={false}
                   label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
                   outerRadius={100}
-                  fill="#8884d8"
                   dataKey="value"
                 >
                   {pieChartData.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}
                 </Pie>
-                <Tooltip formatter={(value) => `${value.toFixed(2)}h`} />
+                <Tooltip formatter={(value) => `${Number(value).toFixed(2)}h`} />
               </PieChart>
             </ResponsiveContainer>
           </div>
         </div>
 
-        {/* Subject Comparison Line Chart */}
+        {/* Subject Comparison — Grouped Bar Chart */}
         <div className="bg-white rounded-2xl border border-gray-200 p-6 mb-6 shadow-sm">
           <h3 className="text-xl font-bold text-gray-900 mb-6">Subject Comparison</h3>
           <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={subjectChartData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-              <XAxis 
-                dataKey="name" 
+            <BarChart data={subjectChartData} barCategoryGap="25%" barGap={4}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
+              <XAxis
+                dataKey="name"
                 tick={{ fill: '#6b7280', fontSize: 12 }}
                 angle={-15}
                 textAnchor="end"
-                height={80}
+                height={60}
+                axisLine={false}
+                tickLine={false}
               />
-              <YAxis 
+              <YAxis
                 tick={{ fill: '#6b7280', fontSize: 12 }}
                 label={{ value: 'Hours', angle: -90, position: 'insideLeft', fill: '#6b7280' }}
+                axisLine={false}
+                tickLine={false}
               />
-              <Tooltip 
-                contentStyle={{ 
-                  backgroundColor: 'white', 
-                  border: '1px solid #e5e7eb',
-                  borderRadius: '8px',
-                  padding: '8px'
-                }}
-                formatter={(value) => `${value.toFixed(2)}h`}
+              <Tooltip
+                content={<SubjectTooltip />}
+                cursor={{ fill: '#f9fafb' }}
               />
               <Legend />
-              <Line 
-                type="monotone" 
-                dataKey="planned" 
-                stroke="#94a3b8" 
-                strokeWidth={2}
-                name="Planned"
-                dot={{ fill: '#94a3b8', strokeWidth: 2, r: 5 }}
-                activeDot={{ r: 7 }}
-              />
-              <Line 
-                type="monotone" 
-                dataKey="studied" 
-                stroke="#6366f1" 
-                strokeWidth={2}
-                name="Studied"
-                dot={{ fill: '#6366f1', strokeWidth: 2, r: 5 }}
-                activeDot={{ r: 7 }}
-              />
-            </LineChart>
+              <Bar dataKey="planned" name="Planned" fill="#94a3b8" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="studied" name="Studied" fill="#6366f1" radius={[4, 4, 0, 0]} />
+            </BarChart>
           </ResponsiveContainer>
         </div>
 
         {/* Subject Performance */}
         <div className="bg-white rounded-2xl border border-gray-200 p-6 mb-6 shadow-sm">
           <h3 className="text-xl font-bold text-gray-900 mb-6">Subject Performance</h3>
-          
+
           <div className="space-y-6">
             {weeklyData.subjects.map((subject) => {
               const percentage = subject.plannedHours > 0 ? Math.round((subject.studiedHours / subject.plannedHours) * 100) : 0;
@@ -495,37 +469,41 @@ const WeeklySummary = () => {
                     </div>
                   </button>
 
-                  {/* Daily Breakdown */}
+                  {/* Daily Breakdown Bar Chart */}
                   {isSelected && (
                     <div className="pl-4 pr-4 pb-4">
                       <div className="bg-white border border-gray-200 rounded-xl p-4">
                         <h5 className="font-semibold text-gray-900 mb-4">Daily Breakdown</h5>
-                        <div className="grid grid-cols-7 gap-2">
-                          {subject.dailyBreakdown.map((day, index) => {
-                            const dayPercentage = day.planned > 0 ? Math.round((day.studied / day.planned) * 100) : 0;
-                            
-                            return (
-                              <div key={index} className="text-center">
-                                <div className="mb-2">
-                                  <div 
-                                    className="h-24 rounded-lg relative overflow-hidden bg-gray-100"
-                                    title={`${day.studied}h / ${day.planned}h`}
-                                  >
-                                    <div
-                                      className="absolute bottom-0 w-full transition-all duration-300"
-                                      style={{
-                                        height: `${Math.min(dayPercentage, 100)}%`,
-                                        backgroundColor: subject.color
-                                      }}
-                                    />
-                                  </div>
-                                </div>
-                                <p className="text-xs font-semibold text-gray-700">{getDayName(index)}</p>
-                                <p className="text-xs text-gray-500">{day.studied.toFixed(1)}h</p>
-                              </div>
-                            );
-                          })}
-                        </div>
+                        <ResponsiveContainer width="100%" height={200}>
+                          <BarChart data={subject.dailyBreakdown} barCategoryGap="25%" barGap={4}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
+                            <XAxis
+                              dataKey="day"
+                              tickFormatter={(val) => val.substring(0, 3)}
+                              tick={{ fill: '#6b7280', fontSize: 11 }}
+                              axisLine={false}
+                              tickLine={false}
+                            />
+                            <YAxis
+                              tick={{ fill: '#6b7280', fontSize: 11 }}
+                              axisLine={false}
+                              tickLine={false}
+                            />
+                            <Tooltip
+                              contentStyle={{
+                                backgroundColor: 'white',
+                                border: '1px solid #e5e7eb',
+                                borderRadius: '8px',
+                                padding: '8px'
+                              }}
+                              formatter={(value) => `${Number(value).toFixed(2)}h`}
+                              cursor={{ fill: '#f9fafb' }}
+                            />
+                            <Legend />
+                            <Bar dataKey="planned" name="Planned" fill="#94a3b8" radius={[4, 4, 0, 0]} />
+                            <Bar dataKey="studied" name="Studied" fill={subject.color} radius={[4, 4, 0, 0]} />
+                          </BarChart>
+                        </ResponsiveContainer>
                       </div>
                     </div>
                   )}
@@ -538,7 +516,7 @@ const WeeklySummary = () => {
         {/* Achievements Section */}
         <div className="bg-white rounded-2xl border border-gray-200 p-6 mb-6 shadow-sm">
           <h3 className="text-xl font-bold text-gray-900 mb-6">Achievements Unlocked</h3>
-          
+
           {weeklyData.achievements.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {weeklyData.achievements.map((achievement) => (
@@ -569,7 +547,7 @@ const WeeklySummary = () => {
               <ul className="space-y-2 text-indigo-100">
                 <li>• You studied {weeklyData.totalStudiedHours.toFixed(1)} hours this week, {weeklyData.completionRate}% of your goal</li>
                 {weeklyData.subjects.length > 0 && (
-                  <li>• Your most productive subject was {weeklyData.subjects.reduce((prev, curr) => 
+                  <li>• Your most productive subject was {weeklyData.subjects.reduce((prev, curr) =>
                     curr.studiedHours > prev.studiedHours ? curr : prev
                   ).subjectName}</li>
                 )}

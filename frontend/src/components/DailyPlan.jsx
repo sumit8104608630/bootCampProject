@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { subjectStore } from '../store/subjectAuth.store';
 import { Play, Pause, Clock, Calendar, Check,
-  ChevronRight, X, Plus, Trash2 } from 'lucide-react';
+  ChevronRight, X, Plus, Trash2, Loader2 } from 'lucide-react';
 import axios from "../../utils/axios";
 
 const DailyTasksPage = () => {
@@ -10,7 +10,7 @@ const DailyTasksPage = () => {
   const [currentDate]        = useState(new Date());
   const [todayTasks, setTodayTasks] = useState([]);
   const [existingPlanId, setExistingPlanId] = useState(null);
-  const timersRef            = useRef({});       // intervalId per task index
+  const timersRef            = useRef({});
   const [showModal, setShowModal]   = useState(false);
   const [selectedSubjects, setSelectedSubjects] = useState([]);
   const [startTime, setStartTime]   = useState('');
@@ -40,7 +40,6 @@ const DailyTasksPage = () => {
   const startLocalTimer = useCallback((taskIndex) => {
     const timerId = `task-${taskIndex}`;
 
-    // Guard: don't double-start
     if (timersRef.current[timerId]) {
       clearInterval(timersRef.current[timerId]);
       delete timersRef.current[timerId];
@@ -87,7 +86,7 @@ const DailyTasksPage = () => {
           studiedHours: task.studiedHours,
           timerSeconds: task.timerSeconds,
           completed:    task.completed || task.studiedHours >= task.plannedHours,
-          timerRunning,          // true on start, false on stop/pause/unmount
+          timerRunning,
         },
         { withCredentials: true }
       );
@@ -98,7 +97,7 @@ const DailyTasksPage = () => {
     }
   }, []);
 
-  // ── Fetch today's plan and rehydrate any running timers ───────────────────
+  // ── Fetch today's plan ────────────────────────────────────────────────────
   const fetchTodaysPlan = useCallback(async () => {
     try {
       setLoading(true);
@@ -113,8 +112,6 @@ const DailyTasksPage = () => {
         const now = Date.now();
 
         const mappedTasks = plan.tasks.map(task => {
-          // How many extra seconds have elapsed since the timer was started
-          // (covers the case where user closed the tab while timer was running)
           let extraSeconds = 0;
           if (task.timerRunning && task.timerStartedAt) {
             extraSeconds = Math.floor(
@@ -142,7 +139,6 @@ const DailyTasksPage = () => {
 
         setTodayTasks(mappedTasks);
 
-        // Restart intervals for tasks that were still running
         mappedTasks.forEach((task, index) => {
           if (task.timerRunning) {
             startLocalTimer(index);
@@ -159,7 +155,7 @@ const DailyTasksPage = () => {
     }
   }, [startLocalTimer]);
 
-  // ── Toggle timer (Start / Pause) ──────────────────────────────────────────
+  // ── Toggle timer ──────────────────────────────────────────────────────────
   const toggleTimer = useCallback((taskIndex) => {
     const timerId = `task-${taskIndex}`;
 
@@ -167,7 +163,6 @@ const DailyTasksPage = () => {
       const task = prev[taskIndex];
       if (!task) return prev;
 
-      // Don't restart a completed task
       if (!task.timerRunning && (task.completed || task.studiedHours >= task.plannedHours)) {
         return prev;
       }
@@ -177,17 +172,13 @@ const DailyTasksPage = () => {
       updated[taskIndex] = { ...task, timerRunning: nowRunning };
 
       if (nowRunning) {
-        // ── START ──
         startLocalTimer(taskIndex);
-        // Tell DB: timer is now running (stamps timerStartedAt on server)
         updateTaskProgressToBackend(updated[taskIndex], true);
       } else {
-        // ── PAUSE ──
         if (timersRef.current[timerId]) {
           clearInterval(timersRef.current[timerId]);
           delete timersRef.current[timerId];
         }
-        // Tell DB: timer stopped, persist current seconds/hours
         updateTaskProgressToBackend(updated[taskIndex], false);
       }
 
@@ -224,7 +215,7 @@ const DailyTasksPage = () => {
       currentTime.setHours(currentTime.getHours() + Math.floor(hoursToAdd));
       currentTime.setMinutes(currentTime.getMinutes() + Math.round((hoursToAdd % 1) * 60));
       const slotEnd    = new Date(currentTime);
-      currentTime.setMinutes(currentTime.getMinutes() + 15); // break
+      currentTime.setMinutes(currentTime.getMinutes() + 15);
       return {
         ...subject,
         startTime: slotStart.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }),
@@ -337,11 +328,8 @@ const DailyTasksPage = () => {
   };
 
   // ── Effects ────────────────────────────────────────────────────────────────
-
-  // Load subjects
   useEffect(() => { getAllSubjects(); }, []);
 
-  // Auto-set modal start time
   useEffect(() => {
     if (showModal && !startTime) {
       const now = new Date();
@@ -349,7 +337,6 @@ const DailyTasksPage = () => {
     }
   }, [showModal]);
 
-  // Fetch plan on mount + on tab visibility change
   useEffect(() => {
     fetchTodaysPlan();
     const onVisible = () => { if (!document.hidden) fetchTodaysPlan(); };
@@ -357,14 +344,11 @@ const DailyTasksPage = () => {
     return () => document.removeEventListener('visibilitychange', onVisible);
   }, []);
 
-  // Cleanup on unmount: stop all timers, persist any still-running ones
   useEffect(() => {
     return () => {
-      // Stop intervals
       Object.values(timersRef.current).forEach(id => clearInterval(id));
       timersRef.current = {};
 
-      // Persist running tasks (fire-and-forget — browser allows short async on unload)
       setTodayTasks(current => {
         current.forEach(task => {
           if (task.timerRunning) {
@@ -377,11 +361,13 @@ const DailyTasksPage = () => {
   }, [updateTaskProgressToBackend]);
 
   // ── Render ─────────────────────────────────────────────────────────────────
+
+  // 1. Full-page loading state
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-indigo-600 mx-auto mb-4" />
+          <Loader2 className="h-16 w-16 animate-spin text-indigo-600 mx-auto mb-4" />
           <p className="text-gray-600 text-lg">Loading today's plan...</p>
         </div>
       </div>
@@ -401,11 +387,12 @@ const DailyTasksPage = () => {
               <span className="font-semibold">{getTodayName()}</span>
               <span>•</span>
               <span>{getFormattedDate()}</span>
+              {/* 2. Inline saving indicator */}
               {saving && (
                 <>
                   <span>•</span>
                   <span className="text-indigo-600 flex items-center gap-1">
-                    <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-indigo-600" />
+                    <Loader2 className="h-3 w-3 animate-spin" />
                     Saving...
                   </span>
                 </>
@@ -452,7 +439,6 @@ const DailyTasksPage = () => {
                   : 0;
                 const isCompleted = task.completed || task.studiedHours >= task.plannedHours;
 
-                // How much time is left
                 const remainingSeconds = Math.max(
                   0,
                   Math.floor(task.plannedHours * 3600) - (task.timerSeconds || 0)
@@ -520,7 +506,6 @@ const DailyTasksPage = () => {
 
                     {/* Timer Controls */}
                     <div className="flex items-center gap-3 flex-wrap">
-                      {/* Elapsed timer display */}
                       <div className="flex items-center gap-2 bg-white px-4 py-3 rounded-lg border-2 border-gray-300 shadow-sm">
                         <Clock className="w-5 h-5 text-gray-500" />
                         <span className="text-lg font-mono font-bold text-gray-900">
@@ -528,7 +513,6 @@ const DailyTasksPage = () => {
                         </span>
                       </div>
 
-                      {/* Play / Pause Button */}
                       <button
                         onClick={() => toggleTimer(index)}
                         disabled={isCompleted || saving}
@@ -549,7 +533,6 @@ const DailyTasksPage = () => {
                         )}
                       </button>
 
-                      {/* Studied hours badge */}
                       <div className="ml-auto text-right">
                         <p className="text-xs text-gray-500">Studied today</p>
                         <p className="text-lg font-bold" style={{ color: task.color }}>
@@ -594,9 +577,10 @@ const DailyTasksPage = () => {
 
             {/* Modal Body */}
             <div className="p-6 overflow-y-auto max-h-[calc(90vh-250px)]">
+              {/* 3. Modal subjects loading state */}
               {fetchingSubjects ? (
                 <div className="flex items-center justify-center py-12">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto" />
+                  <Loader2 className="h-12 w-12 animate-spin text-indigo-600" />
                 </div>
               ) : allSubjects.length === 0 ? (
                 <div className="text-center py-12">
@@ -774,13 +758,14 @@ const DailyTasksPage = () => {
               >
                 Cancel
               </button>
+              {/* 4. Modal save button loader */}
               <button
                 onClick={generatePlan}
                 disabled={selectedSubjects.length === 0 || !selectedSubjects.every(s => s.subjectId) || saving}
                 className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center gap-2"
               >
                 {saving ? (
-                  <><div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white" /> Saving...</>
+                  <><Loader2 className="h-5 w-5 animate-spin" /> Saving...</>
                 ) : (
                   <><Plus className="w-5 h-5" /> {todayTasks.length > 0 ? 'Add to Schedule' : 'Generate Plan'} ({selectedSubjects.filter(s => s.subjectId).length} subjects)</>
                 )}
