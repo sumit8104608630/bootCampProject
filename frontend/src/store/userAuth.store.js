@@ -1,6 +1,5 @@
 import { create } from "zustand";
 import axios from "../../utils/axios";
-const API_URL = import.meta.env.VITE_DATA_BASE_LINK; // Your backend URL
 
 export const authStore = create((set, get) => ({
   loginError: null,

@@ -1,6 +1,5 @@
 import { create } from "zustand";
-import { axiosInstance } from "../lib/axios";
-const API_URL = import.meta.env.VITE_DATA_BASE_LINK; // Your backend URL
+import axios from "../../utils/axios";
 
 export const subjectStore = create((set, get) => ({
   addingLoad: false,
@@ -12,7 +11,7 @@ export const subjectStore = create((set, get) => ({
         set({addingLoad:false})
     try {
             
-            const data=await axiosInstance.post("/subject/add_subject", formData,{ withCredentials: true });
+            const data=await axios.post("/subject/add_subject", formData,{ withCredentials: true });
            return (data.data);
     } catch (error) {
         console.log(error)
@@ -26,7 +25,7 @@ export const subjectStore = create((set, get) => ({
   getAllSubjects:async()=>{
         set({fetchingSubjects:true})
     try {
-                  const data=await axiosInstance.get("/subject/get_subjects",{ withCredentials: true });
+                  const data=await axios.get("/subject/get_subjects",{ withCredentials: true });
 
         set({allSubjects:data.data.data.subjects})
       console.log(data.data)
@@ -43,7 +42,7 @@ export const subjectStore = create((set, get) => ({
   get_dash_board_data:async()=>{
     set({dashLoading:true})
     try {
-        const data=await axiosInstance.get("/subject/dash_board_data",{withCredentials:true})
+        const data=await axios.get("/subject/dash_board_data",{withCredentials:true})
         set({dash_board_data:data.data.data.dashboardData[0]})
     } catch (error) {
       console.log(error)
