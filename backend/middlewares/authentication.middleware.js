@@ -32,10 +32,12 @@ return async(req,res,next)=>{
             req.user=user;
             res.status(200).cookie('accessToken',new_accessToken,{
                 httpOnly:true,
-                secure:true,
+                secure: process.env.NODE_ENV === 'production',
+                sameSite: process.env.NODE_ENV === 'production' ? 'None':'Lax'
             }).cookie("refresh_token",new_refreshToken,{
                 httpOnly:true,
-                secure:true,
+                secure: process.env.NODE_ENV === 'production',
+                sameSite: process.env.NODE_ENV === 'production' ? 'None':'Lax'
             })
             return next()
         } 

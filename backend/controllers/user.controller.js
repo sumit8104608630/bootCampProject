@@ -12,19 +12,16 @@ import { Resend } from 'resend';
 const resend = new Resend(process.env.RESEND_API_KEY); 
 
 const client = redis.createClient({
-  url: process.env.REDIS_URL || 'redis://localhost:6379', // Adjust the URL based on your Redis setup
+  url: process.env.REDIS_URL , // Adjust the URL based on your Redis setup
 });
 
 client.on('error', (err) => console.log('Redis Client Error', err));
 client.connect();
 
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-
 import path from "path" 
-// user registration controller
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);// user registration controller
 // user registration controller (name, email, password, profile photo)
 
 const userRegistration = asyncHandler(async (req, res) => {
@@ -157,6 +154,7 @@ const getUserInfo=asyncHandler(async(req,res)=>{
 // email verification code ....
 
 const generateOtp = asyncHandler(async (req, res) => {
+  
   const { email } = req.body;
   if (!email) {
     throw new apiError('Please fill all the field', 400);
@@ -172,15 +170,27 @@ const generateOtp = asyncHandler(async (req, res) => {
   };
 
   // Store OTP in Redis with email as the key and expiration time
-  await client.set(email, JSON.stringify(otpData), { EX: expireTime });
+  try {
+    if (!client.isOpen) {
+      await client.connect();
+    }
+    await client.set(email, JSON.stringify(otpData), { EX: expireTime });
+  } catch (redisError) {
+    console.error('Redis Error:', redisError);
+    // If Redis fails, we might want to continue or fail. 
+    // For now, let's throw an error to be safe.
+    throw new apiError('Internal Server Error (Redis)', 500);
+  }
 
   // Send OTP to email
   const transporter = nodemailer.createTransport({
-    service: 'smtp.gmail.com',
-    auth: {
-      user: process.env.COMPANY_EMAIL,
-      pass: process.env.COMPANY_EMAIL_PASSWORD,
-    },
+    host: process.env.SMTP_HOST,
+        port: process.env.SMTP_PORT,
+        secure: false, // true for 465, false for other ports
+        auth: {
+            user: process.env.SMTP_USERNAME,
+            pass: process.env.SMTP_PASSWORD,
+        }
   });
 
 
@@ -237,6 +247,9 @@ const verify_otp = asyncHandler(async (req, res) => {
     }
 
     // Get OTP from Redis 
+    if (!client.isOpen) {
+      await client.connect();
+    }
     const storedOtpData = await client.get(email);
     if (!storedOtpData) {
       return res.status(404).json(new apiResponse(404, '', 'OTP not found or expired'));
