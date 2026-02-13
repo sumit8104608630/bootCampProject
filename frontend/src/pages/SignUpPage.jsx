@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Mail, Lock, User, Eye, EyeOff, BookOpen, CheckCircle, Loader2 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { authStore } from "../store/userAuth.store";
-import axios from 'axios';
+import axios from '../../utils/axios';
 
 const SignUpPage = () => {
   const navigate = useNavigate();
@@ -77,7 +77,7 @@ const SignUpPage = () => {
     setOtpError('');
 
     try {
-      const response = await axios.post(`${API_BASE_URL}/email/generate_otp`, {
+      const response = await axios.post(`/email/generate_otp`, {
         email: formData.email
       });
 
@@ -125,7 +125,7 @@ const SignUpPage = () => {
     setOtpError('');
 
     try {
-      const response = await axios.post(`${API_BASE_URL}/email/verify_otp`, {
+      const response = await axios.post(`/email/verify_otp`, {
         email: formData.email,
         otp: otpValue
       });

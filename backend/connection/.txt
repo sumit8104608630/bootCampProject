@@ -4,4 +4,4 @@ sumit8104608630
 mongodb+srv://sumit8104608630:sss81046@cluster0.st1d2d2.mongodb.net/?appName=Cluster0
 
 
-MONGO_DB_URL=mongodb+srv://sumit8104608630:sss81046@cluster0.st1d2d2.mongodb.net/mongodb+srv://sumit8104608630:sss81046@cluster0.st1d2d2.mongodb.net/?appName=Cluster0
+MONGO_DB_URL=mongodb+srv://sumit8104608630:sss81046@cluster0.st1d2d2.mongodb.net/?appName=Cluster0
