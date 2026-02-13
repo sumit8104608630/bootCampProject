@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { axiosInstance } from "../lib/axios";
+import axios from "../../utils/axios";
 const API_URL = import.meta.env.VITE_DATA_BASE_LINK; // Your backend URL
 
 export const authStore = create((set, get) => ({
@@ -12,7 +12,7 @@ export const authStore = create((set, get) => ({
   // Check if user is authenticated
   checkAuth: async () => {
     try {
-      const response = await axiosInstance.get("/user/userInfo", { withCredentials: true });
+      const response = await axios.get("/user/userInfo", { withCredentials: true });
       set({ authUser: response.data.data.user });
     } catch (error) {
       console.log(error);
@@ -26,7 +26,7 @@ export const authStore = create((set, get) => ({
   login: async (formData) => {
     try {
       set({ isLoginIng: true, loginError: null });
-      const response = await axiosInstance.post("/user/login", formData, { withCredentials: true });
+      const response = await axios.post("/user/login", formData, { withCredentials: true });
 
       if (response.data.statusCode === 200) {
         set({ authUser: response.data.data });
@@ -43,7 +43,7 @@ export const authStore = create((set, get) => ({
   // User logout
   logout: async (navigate) => {
     try {
-      const response = await axiosInstance.get("/user/logout", { withCredentials: true });
+      const response = await axios.get("/user/logout", { withCredentials: true });
       if (response.data.statusCode === 200) {
         set({ authUser: null });
         navigate("/login");
@@ -65,7 +65,7 @@ export const authStore = create((set, get) => ({
       }
 
       set({ isSigningUp: true });
-      const response = await axiosInstance.post("/user/register", uploadData, { withCredentials: true });
+      const response = await axios.post("/user/register", uploadData, { withCredentials: true });
 
       if (response.data.statusCode === 201) {
         set({ isSigningUp: false });
