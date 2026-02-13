@@ -15,7 +15,7 @@ export default function ForgotPasswordFlow() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const API_BASE_URL = 'http://localhost:8000';
+  const API_BASE_URL = 'https://bootcampproject.onrender.com';
 
   const handleEmailSubmit = async () => {
     if (!email) {
