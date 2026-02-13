@@ -15,13 +15,7 @@ console.log(
   "SMTP_PASSWORD:",
   process.env.SMTP_PASSWORD ? "FOUND" : "MISSING"
 );
-transporter.verify((error, success) => {
-  if (error) {
-    console.error("SMTP error:", error);
-  } else {
-    console.log("SMTP ready 🚀");
-  }
-});
+
 
 
 const client = redis.createClient({
@@ -207,7 +201,13 @@ const generateOtp = asyncHandler(async (req, res) => {
     },
     family: 4, 
   });
-
+transporter.verify((error, success) => {
+  if (error) {
+    console.error("SMTP error:", error);
+  } else {
+    console.log("SMTP ready 🚀");
+  }
+});
 
   const mailOptions = {
     from: process.env.SMTP_USERNAME,
