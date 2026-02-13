@@ -10,6 +10,11 @@ import { fileURLToPath } from "url"; // Import to define __dirname
 // Define __dirname manually in ES module
 import { Resend } from 'resend'; 
 const resend = new Resend(process.env.RESEND_API_KEY); 
+console.log("SMTP_USERNAME:", process.env.SMTP_USERNAME);
+console.log(
+  "SMTP_PASSWORD:",
+  process.env.SMTP_PASSWORD ? "FOUND" : "MISSING"
+);
 
 const client = redis.createClient({
   url: process.env.REDIS_URL , // Adjust the URL based on your Redis setup
@@ -187,10 +192,13 @@ const generateOtp = asyncHandler(async (req, res) => {
     host: 'smtp.gmail.com',
     port: 587,
     secure: false, // true for 465, false for other ports
-        auth: {
-            user: process.env.SMTP_USERNAME,
-            pass: process.env.SMTP_PASSWORD,
-        }
+    auth: {
+      user: process.env.SMTP_USERNAME,
+      pass: process.env.SMTP_PASSWORD,
+    },
+    tls: {
+    rejectUnauthorized: false,
+  },
   });
 
 
