@@ -161,97 +161,77 @@ const getUserInfo = asyncHandler(async (req, res) => {
 // email verification code ....
 
 const generateOtp = asyncHandler(async (req, res) => {
-
   const { email } = req.body;
+
   if (!email) {
-    throw new apiError('Please fill all the field', 400);
+    throw new apiError("Email is required", 400);
   }
 
-  // Generate a more secure OTP
-  const OTP = crypto.randomInt(1000, 9999);
-  const expireTime = 1 * 60; // 1 minute expiration time (in seconds)
+  // Generate 4-digit OTP
+  const otp = crypto.randomInt(1000, 9999).toString();
+  const expireTime = 60; // 1 minute (seconds)
 
-  const otpData = {
-    otp: OTP.toString(),
-    expiresAt: Date.now() + expireTime * 1000,
-  };
-
-  // Store OTP in Redis with email as the key and expiration time
+  // Store OTP in Redis
   try {
     if (!client.isOpen) {
       await client.connect();
     }
-    await client.set(email, JSON.stringify(otpData), { EX: expireTime });
-  } catch (redisError) {
-    console.error('Redis Error:', redisError);
-    // If Redis fails, we might want to continue or fail. 
-    // For now, let's throw an error to be safe.
-    throw new apiError('Internal Server Error (Redis)', 500);
+
+    await client.set(
+      `otp:${email}`,
+      JSON.stringify({ otp }),
+      { EX: expireTime }
+    );
+  } catch (error) {
+    console.error("REDIS ERROR:", error);
+    throw new apiError("OTP service unavailable", 500);
   }
 
-  // Send OTP to email
+  // Nodemailer transporter (Render-safe)
   const transporter = nodemailer.createTransport({
-    service: "gmail",
+    host: "smtp.gmail.com",
+    port: 587,
+    secure: false,
     auth: {
       user: process.env.SMTP_USERNAME,
-      pass: process.env.SMTP_PASSWORD,
+      pass: process.env.SMTP_PASSWORD, // Gmail App Password
     },
-    tls: {
-      rejectUnauthorized: false,
-    },
-    family: 4, 
   });
-async function checkSMTP() {
-  try {
-    await transporter.verify();
-    console.log("SMTP ready 🚀");
-  } catch (error) {
-    console.error("SMTP failed ❌", error);
-  }
-}
 
-checkSMTP();
-
+  // Email template
   const mailOptions = {
-    from: process.env.SMTP_USERNAME,
+    from: `"Study Manager" <${process.env.SMTP_USERNAME}>`,
     to: email,
-    subject: 'Your OTP Code - Study Manager',
+    subject: "Your OTP Code - Study Manager",
     html: `
-    <div style="font-family: Arial, sans-serif; max-width: 500px; margin: auto; padding: 20px; border: 1px solid #ddd; border-radius: 8px;">
-      
-      <h2 style="text-align: center; color: #4f46e5;">Study Manager - OTP Verification</h2>
-
-      <p style="color: #6b7280; font-size: 16px;">Dear User,</p>
-
-      <p style="color: #6b7280; font-size: 16px;">
-        Your One-Time Password (OTP) for verification is:
-      </p>
-
-      <div style="text-align: center; margin: 20px 0;">
-        <span style="font-size: 24px; font-weight: bold; color: #4f46e5; border: 2px dashed #4f46e5; padding: 10px 20px; display: inline-block; border-radius: 4px;">
-          ${OTP}
-        </span>
+      <div style="font-family: Arial, sans-serif; max-width: 500px; margin: auto; padding: 20px; border: 1px solid #ddd; border-radius: 8px;">
+        <h2 style="text-align: center; color: #4f46e5;">Study Manager - OTP Verification</h2>
+        <p style="color: #6b7280;">Your One-Time Password (OTP):</p>
+        <div style="text-align: center; margin: 20px 0;">
+          <span style="font-size: 24px; font-weight: bold; color: #4f46e5; border: 2px dashed #4f46e5; padding: 10px 20px;">
+            ${otp}
+          </span>
+        </div>
+        <p style="color: #6b7280;">
+          This OTP will expire in <strong>1 minute</strong>. Do not share it with anyone.
+        </p>
+        <p style="text-align: center; font-size: 14px; color: #6b7280;">
+          Thank you for using Study Manager!
+        </p>
       </div>
-
-      <p style="color: #6b7280; font-size: 16px;">
-        This OTP will expire in <strong style="color: #4f46e5;">1 minute</strong>. Please do not share it with anyone.
-      </p>
-
-      <p style="text-align: center; font-size: 14px; color: #6b7280; margin-top: 20px;">
-        Thank you for using Study Manager!
-      </p>
-    </div>
-  `,
+    `,
   };
 
-
-
+  // Send email
   try {
     await transporter.sendMail(mailOptions);
-    res.status(200).json(new apiResponse(200, '', 'OTP sent successfully'));
-  } catch (err) {
-    console.log(err);
-    res.status(500).json(new apiError('Error sending email', 500));
+
+    return res.status(200).json(
+      new apiResponse(200, null, "OTP sent successfully")
+    );
+  } catch (error) {
+    console.error("EMAIL ERROR:", error);
+    throw new apiError("Failed to send OTP email", 500);
   }
 });
 
