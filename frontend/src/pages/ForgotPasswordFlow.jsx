@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Mail, Lock, CheckCircle, Eye, EyeOff, ArrowLeft } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import axios from '../../utils/axios';
 
 export default function ForgotPasswordFlow() {
   const navigate = useNavigate();
@@ -15,7 +15,7 @@ export default function ForgotPasswordFlow() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const API_BASE_URL = 'https://bootcampproject.onrender.com';
+  
 
   const handleEmailSubmit = async () => {
     if (!email) {
@@ -27,7 +27,7 @@ export default function ForgotPasswordFlow() {
     setError('');
 
     try {
-      const response = await axios.post(`${API_BASE_URL}/email/generate_otp`, {
+      const response = await axios.post("/email/generate_otp", {
         email: email
       });
 
@@ -75,7 +75,7 @@ export default function ForgotPasswordFlow() {
     setError('');
 
     try {
-      const response = await axios.post(`${API_BASE_URL}/email/verify_otp`, {
+      const response = await axios.post(`/email/verify_otp`, {
         email: email,
         otp: otpValue
       });
@@ -98,7 +98,7 @@ export default function ForgotPasswordFlow() {
     setOtp(['', '', '', '']);
 
     try {
-      const response = await axios.post(`${API_BASE_URL}/email/generate_otp`, {
+      const response = await axios.post(`/email/generate_otp`, {
         email: email
       });
 
@@ -133,7 +133,7 @@ export default function ForgotPasswordFlow() {
     setError('');
 
     try {
-      const response = await axios.post(`${API_BASE_URL}/user/userPasswordChange`, {
+      const response = await axios.post(`/user/userPasswordChange`, {
         email: email,
         password: password
       });
