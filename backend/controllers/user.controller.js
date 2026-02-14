@@ -162,7 +162,7 @@ const getUserInfo = asyncHandler(async (req, res) => {
 
 const generateOtp = asyncHandler(async (req, res) => {
   const { email } = req.body;
-
+  console.log('Request body:', req.body);
   if (!email) {
     throw new apiError("Email is required", 400);
   }
@@ -186,7 +186,7 @@ const generateOtp = asyncHandler(async (req, res) => {
     console.error("REDIS ERROR:", error);
     throw new apiError("OTP service unavailable", 500);
   }
-
+  console.log('Otp ', otp)
   // Nodemailer transporter (Render-safe)
   const transporter = nodemailer.createTransport({
     service: 'gmail',
