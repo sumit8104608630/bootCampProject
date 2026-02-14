@@ -201,13 +201,16 @@ const generateOtp = asyncHandler(async (req, res) => {
     },
     family: 4, 
   });
-transporter.verify((error, success) => {
-  if (error) {
-    console.error("SMTP error:", error);
-  } else {
+async function checkSMTP() {
+  try {
+    await transporter.verify();
     console.log("SMTP ready 🚀");
+  } catch (error) {
+    console.error("SMTP failed ❌", error);
   }
-});
+}
+
+checkSMTP();
 
   const mailOptions = {
     from: process.env.SMTP_USERNAME,
