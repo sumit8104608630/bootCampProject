@@ -29,7 +29,6 @@ const SubjectSchema = new mongoose.Schema({
     trim: true,
   },
 
-  // ⭐ Attachments (Study Materials)
   attachments: [
     {
       fileName: { type: String, trim: true },
@@ -44,13 +43,11 @@ const SubjectSchema = new mongoose.Schema({
     },
   ],
 
-  // ⭐ Total hours the student has studied
   totalHoursStudied: {
     type: Number,
     default: 0,
   },
 
-  // ⭐ The date when the student wants to complete the subject/task
   completionDate: {
     type: Date,
     required: true,
@@ -59,8 +56,7 @@ const SubjectSchema = new mongoose.Schema({
 
 },{timestamps:true});
 
-// ⭐ Virtual Field for Completion % (Auto Calculated)
-//   Based on how much time they studied vs required time until completion date
+
 SubjectSchema.virtual("completionPercentage").get(function () {
   if (!this.hoursPerWeek || !this.totalHoursStudied) return 0;
 

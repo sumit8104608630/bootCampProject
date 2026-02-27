@@ -16,21 +16,21 @@ const all_subject=asyncHandler(async(req,res)=>{
 });
 
 const daily_week = asyncHandler(async (req, res) => {
-  const {id} = req.user;
+  const { id } = req.user;
+  const weekOffset = parseInt(req.query.weekOffset) || 0; // ✅ 0=this week, -1=last week
 
   const today = new Date();
   const currentDay = today.getDay();
   const daysFromMonday = currentDay === 0 ? 6 : currentDay - 1;
-  
-  // THIS WEEK's Monday (not last week)
+
   const thisMonday = new Date(today);
-  thisMonday.setDate(today.getDate() - daysFromMonday); // Remove the - 7
+  thisMonday.setDate(today.getDate() - daysFromMonday + (weekOffset * 7)); // ✅ apply offset
   thisMonday.setHours(0, 0, 0, 0);
-  
+
   const thisSunday = new Date(thisMonday);
   thisSunday.setDate(thisMonday.getDate() + 6);
   thisSunday.setHours(23, 59, 59, 999);
-  
+
   const formatDate = (date) => {
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -92,6 +92,7 @@ const daily_week = asyncHandler(async (req, res) => {
       )
     );
 });
+
 
 export{
     all_subject,

@@ -26,12 +26,15 @@ import dailyPlanRoutes from "../routes/dailyPlan.routes.js";
 import subjectRoutes from "../routes/subject.routes.js"
 import emailRoutes from "../routes/email.routes.js"
 import weeklyRoutes from "../routes/weekly.routes.js";
+import { aiRouter } from "../routes/roadMapAi.routes.js";
 
 app.use("/user", userRoutes);
 app.use("/subject",subjectRoutes)
 app.use("/email",emailRoutes);
 app.use("/dailyPlan",dailyPlanRoutes);
 app.use("/week",weeklyRoutes);
+app.use("/ai",aiRouter);
+
 
 
 

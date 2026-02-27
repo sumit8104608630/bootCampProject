@@ -9,12 +9,7 @@ import nodemailer from "nodemailer"
 import { fileURLToPath } from "url"; // Import to define __dirname
 // Define __dirname manually in ES module
 import { Resend } from 'resend';
-const resend = new Resend(process.env.RESEND_API_KEY);
-console.log("SMTP_USERNAME:", process.env.SMTP_USERNAME);
-console.log(
-  "SMTP_PASSWORD:",
-  process.env.SMTP_PASSWORD ? "FOUND" : "MISSING"
-);
+
 
 
 
@@ -162,7 +157,6 @@ const getUserInfo = asyncHandler(async (req, res) => {
 
 const generateOtp = asyncHandler(async (req, res) => {
   const { email } = req.body;
-  console.log('Request body:', req.body);
   if (!email) {
     throw new apiError("Email is required", 400);
   }
@@ -178,7 +172,7 @@ const generateOtp = asyncHandler(async (req, res) => {
     }
 
     await client.set(
-      `otp:${email}`,
+      email,
       JSON.stringify({ otp }),
       { EX: expireTime }
     );
@@ -186,7 +180,6 @@ const generateOtp = asyncHandler(async (req, res) => {
     console.error("REDIS ERROR:", error);
     throw new apiError("OTP service unavailable", 500);
   }
-  console.log('Otp ', otp)
   // Nodemailer transporter (Render-safe)
   const transporter = nodemailer.createTransport({
     service: 'gmail',

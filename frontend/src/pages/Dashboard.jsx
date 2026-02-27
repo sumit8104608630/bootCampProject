@@ -1,4 +1,4 @@
-import { BookOpen, Plus, Calendar, BarChart3, Settings, LogOut, User, Clock, AlertCircle, Sparkles, HelpCircle, LayoutDashboard, Menu, X, Loader2 } from 'lucide-react';
+import { BookOpen, Plus, Calendar, BarChart3, Settings, LogOut, Map, Clock, AlertCircle, Sparkles, HelpCircle, LayoutDashboard, Menu, X, Loader2, Target } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { authStore } from '../store/userAuth.store';
 import { useNavigate } from 'react-router-dom';
@@ -6,13 +6,16 @@ import SubjectsPage from '../components/SubjectsPage.jsx';
 import DailyPlan from '../components/DailyPlan';
 import { subjectStore } from '../store/subjectAuth.store.js';
 import WeeklySummaryPage from '../components/WeeklySummary.jsx';
+import AIRoadmapGenerator from '../components/AIRoadmapGenerator.jsx';
+import RoadmapListPage from '../components/RoadmapRender.jsx';
+import SettingsPage from '../components/SettingsPage.jsx';
 
 export default function Dashboard() {
   const { dash_board_data, dashLoading, get_dash_board_data } = subjectStore();
   const [activeMenu, setActiveMenu] = useState('Dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const { authUser, logout, deleteActiveUser } = authStore();
-  const [profileImageError, setProfileImageError] = useState(false); // ✅ Fixed syntax
+  const [profileImageError, setProfileImageError] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -48,7 +51,9 @@ export default function Dashboard() {
     { icon: BookOpen, label: 'Subjects List' },
     { icon: Calendar, label: 'Daily Plan' },
     { icon: BarChart3, label: 'Weekly Summary' },
-    { icon: Settings, label: 'Settings' }
+    { icon: Target, label: 'AI Roadmap' },
+    { icon: Map, label: 'My Roadmaps' },
+    { icon: Settings, label: 'Settings' },
   ];
 
   // Render content based on active menu
@@ -59,17 +64,13 @@ export default function Dashboard() {
       case 'Daily Plan':
         return <DailyPlan />;
       case 'Weekly Summary':
-        return (
-          <WeeklySummaryPage/>
-        );
+        return <WeeklySummaryPage />;
+      case 'AI Roadmap':
+        return <AIRoadmapGenerator />;
+      case 'My Roadmaps':
+        return <RoadmapListPage />;
       case 'Settings':
-        return (
-          <div className="text-center py-16">
-            <Settings className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">Settings</h2>
-            <p className="text-gray-500">Settings component coming soon...</p>
-          </div>
-        );
+  return <SettingsPage />;
       case 'Dashboard':
       default:
         return (
@@ -182,10 +183,30 @@ export default function Dashboard() {
                   </button>
                 </div>
 
+                {/* AI Roadmap Banner */}
+                <div className="bg-gradient-to-r from-purple-600 to-indigo-600 rounded-2xl sm:rounded-3xl p-6 sm:p-8 mb-6 sm:mb-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div className="flex items-start sm:items-center gap-4">
+                    <Target className="w-6 h-6 sm:w-8 sm:h-8 text-white flex-shrink-0" />
+                    <div>
+                      <h2 className="text-xl sm:text-2xl font-bold text-white mb-2">Need a learning roadmap?</h2>
+                      <p className="text-purple-100 text-sm sm:text-base">
+                        Let AI create a personalized step-by-step learning path for any subject
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => handleMenuClick('AI Roadmap')}
+                    className="w-full sm:w-auto bg-white text-purple-600 px-6 py-3 rounded-xl font-semibold hover:bg-purple-50 transition-colors whitespace-nowrap flex items-center gap-2"
+                  >
+                    <Sparkles className="w-5 h-5" />
+                    Create Roadmap
+                  </button>
+                </div>
+
                 {/* Quick Actions */}
                 <div>
                   <h3 className="text-xl font-bold text-gray-900 mb-4">Quick Actions</h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     <button
                       onClick={() => handleMenuClick('Subjects List')}
                       className="bg-white rounded-xl p-6 border border-gray-200 hover:border-indigo-300 hover:shadow-md transition-all text-left"
@@ -211,6 +232,15 @@ export default function Dashboard() {
                       <BarChart3 className="w-8 h-8 text-indigo-600 mb-3" />
                       <h4 className="font-semibold text-gray-900 mb-1">Weekly Summary</h4>
                       <p className="text-sm text-gray-500">Review your progress</p>
+                    </button>
+
+                    <button
+                      onClick={() => handleMenuClick('AI Roadmap')}
+                      className="bg-white rounded-xl p-6 border border-gray-200 hover:border-purple-300 hover:shadow-md transition-all text-left"
+                    >
+                      <Target className="w-8 h-8 text-purple-600 mb-3" />
+                      <h4 className="font-semibold text-gray-900 mb-1">AI Roadmap</h4>
+                      <p className="text-sm text-gray-500">Get personalized learning path</p>
                     </button>
                   </div>
                 </div>
@@ -281,6 +311,41 @@ export default function Dashboard() {
             </button>
           ))}
         </nav>
+
+        {/* User Profile Section at Bottom */}
+        <div className="pt-6 border-t border-gray-200 mt-auto">
+          <div className="flex items-center gap-3 mb-4">
+            {authUser?.profilePhoto && !profileImageError ? (
+              <img
+                src={authUser.profilePhoto}
+                alt={authUser?.name || 'User'}
+                onError={() => setProfileImageError(true)}
+                className="w-10 h-10 rounded-full object-cover ring-2 ring-indigo-100"
+              />
+            ) : (
+              <div className="w-10 h-10 bg-indigo-600 rounded-full flex items-center justify-center">
+                <span className="text-white font-bold text-lg uppercase">
+                  {authUser?.name ? authUser.name.charAt(0).toUpperCase() : 'U'}
+                </span>
+              </div>
+            )}
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-gray-900 truncate">
+                {authUser?.name || 'User'}
+              </p>
+              <p className="text-xs text-gray-500 truncate">
+                {authUser?.email || 'user@example.com'}
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-red-600 hover:bg-red-50 transition-colors"
+          >
+            <LogOut className="w-5 h-5" />
+            Logout
+          </button>
+        </div>
       </div>
 
       {/* Main Content */}
@@ -296,14 +361,11 @@ export default function Dashboard() {
           </button>
 
           <div className="flex items-center gap-3 ml-auto">
-            {/* ✅ Fixed Logic: Show profile photo if exists AND no error, otherwise show logo */}
             {authUser?.profilePhoto && !profileImageError ? (
               <img
                 src={authUser.profilePhoto}
                 alt={authUser?.name || 'User'}
-                onError={() => {
-                  setProfileImageError(true);
-                }}
+                onError={() => setProfileImageError(true)}
                 className="w-10 h-10 sm:w-12 sm:h-12 rounded-full object-cover ring-2 ring-indigo-100"
               />
             ) : (

@@ -58,6 +58,12 @@ const calculateWeeklyHours = (hoursPerDay) => {
 };
 
 export default function SubjectsPage() {
+  const [toast, setToast] = useState(null); // { message, type: 'error' | 'success' }
+
+const showToast = (message, type = 'error') => {
+  setToast({ message, type });
+  setTimeout(() => setToast(null), 3000);
+};
   const { addingSubject, allSubjects, fetchingSubjects, getAllSubjects, addingLoad } = subjectStore();
   
   const [showAddForm, setShowAddForm] = useState(false);
@@ -120,52 +126,60 @@ export default function SubjectsPage() {
       document.body.style.overflow = 'unset';
     };
   }, [showAttachments]);
+const handleFileUpload = async (e) => {
+  const files = Array.from(e.target.files);
+  if (files.length === 0) return;
 
-  const handleFileUpload = async (e) => {
-    const files = Array.from(e.target.files);
-    if (files.length === 0) return;
+  setUploading(true);
 
-    setUploading(true);
+  try {
+    const newAttachments = await Promise.all(
+      files.map(file => {
+        return new Promise((resolve, reject) => {
+          if (file.type !== 'application/pdf') {
+            showToast(`${file.name} is not a PDF. Only PDF files are allowed.`);
+            reject(new Error('Invalid file type'));
+            return;
+          }
+          if (file.size > 5 * 1024 * 1024) {
+            showToast(`${file.name} is too large. Maximum size is 5MB.`);
+            reject(new Error('File too large'));
+            return;
+          }
 
-    try {
-      const newAttachments = await Promise.all(
-        files.map(file => {
-          return new Promise((resolve, reject) => {
-            if (file.size > 5 * 1024 * 1024) {
-              alert(`${file.name} is too large. Maximum size is 5MB.`);
-              reject(new Error('File too large'));
-              return;
-            }
+          const reader = new FileReader();
+          reader.onload = (event) => {
+            resolve({
+              id: Date.now() + Math.random(),
+              fileName: file.name,
+              fileType: file.type,
+              fileSize: file.size,
+              fileData: event.target.result,
+              uploadedAt: new Date().toISOString()
+            });
+          };
+          reader.onerror = () => {
+            showToast(`Failed to read ${file.name}. Please try again.`);
+            reject(new Error('Failed to read file'));
+          };
+          reader.readAsDataURL(file);
+        });
+      })
+    );
 
-            const reader = new FileReader();
-            reader.onload = (event) => {
-              resolve({
-                id: Date.now() + Math.random(),
-                fileName: file.name,
-                fileType: file.type,
-                fileSize: file.size,
-                fileData: event.target.result,
-                uploadedAt: new Date().toISOString()
-              });
-            };
-            reader.onerror = () => reject(new Error('Failed to read file'));
-            reader.readAsDataURL(file);
-          });
-        })
-      );
+    setFormData(prev => ({
+      ...prev,
+      attachments: [...prev.attachments, ...newAttachments]
+    }));
+    showToast(`${newAttachments.length} file${newAttachments.length > 1 ? 's' : ''} attached successfully`, 'success');
 
-      setFormData(prev => ({
-        ...prev,
-        attachments: [...prev.attachments, ...newAttachments]
-      }));
-    } catch (error) {
-      console.error('Error uploading files:', error);
-    } finally {
-      setUploading(false);
-      e.target.value = '';
-    }
-  };
-
+  } catch (error) {
+    console.error('Error uploading files:', error);
+  } finally {
+    setUploading(false);
+    e.target.value = '';
+  }
+};
   const removeAttachment = (attachmentId) => {
     setFormData(prev => ({
       ...prev,
@@ -237,6 +251,22 @@ export default function SubjectsPage() {
       console.log('Delete subject:', id);
     }
   };
+
+const formatHoursStudied = (totalHours) => {
+  if (!totalHours || totalHours === 0) return 'Not started';
+
+  const totalSeconds = Math.floor(totalHours * 3600);
+
+  if (totalSeconds < 1) return 'Just started';
+
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  if (hours === 0 && minutes === 0) return `${seconds}s`;
+  if (hours === 0) return `${minutes}m ${seconds}s`;
+  return `${hours}h ${minutes}m ${seconds}s`;
+};
 
   const getFileIcon = (fileType) => {
     if (fileType?.startsWith('image/')) return <Image className="w-5 h-5" />;
@@ -663,8 +693,7 @@ export default function SubjectsPage() {
                           <span className="text-xs text-gray-500 ml-1">(auto)</span>
                         )}
                       </p>
-                      <p>Studied: {subject.totalHoursStudied || 0}h</p>
-                      {subject.completionDate && (
+<p>Studied: {formatHoursStudied(subject.totalHoursStudied || 0)}</p>                      {subject.completionDate && (
                         <div 
                           className="mt-3 p-2 rounded-lg border"
                           style={{ 
@@ -701,6 +730,22 @@ export default function SubjectsPage() {
           </div>
         )}
       </div>
+
+      
+      {/* Toast Notification */}
+{toast && (
+  <div className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-5 py-3.5 rounded-2xl shadow-xl text-white text-sm font-medium transition-all
+    ${toast.type === 'success' ? 'bg-green-600' : 'bg-red-500'}`}>
+    {toast.type === 'success'
+      ? <Check className="w-4 h-4 flex-shrink-0" />
+      : <X className="w-4 h-4 flex-shrink-0" />}
+    {toast.message}
+    <button onClick={() => setToast(null)} className="ml-2 opacity-70 hover:opacity-100">
+      <X className="w-3.5 h-3.5" />
+    </button>
+  </div>
+)}
     </div>
+    
   );
 }

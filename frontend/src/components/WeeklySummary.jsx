@@ -14,26 +14,23 @@ const WeeklySummary = () => {
 
   const { addingSubject, allSubjects, fetchingSubjects, getAllSubjects, addingLoad } = subjectStore();
 
-  // Fetch weekly data from API
-  useEffect(() => {
-    const fetchWeeklyData = async () => {
-      try {
-        setLoading(true);
-        const response = await axios.get('/week/weeklly_data');
-        setWeeklyApiData(response.data.data);
-        console.log(response.data.data);
-        setError(null);
-      } catch (err) {
-        console.error('Error fetching weekly data:', err);
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    };
+useEffect(() => {
+  const fetchWeeklyData = async () => {
+    try {
+      setLoading(true);
+      const response = await axios.get(`/week/weeklly_data?weekOffset=${currentWeekOffset}`); // ✅ pass offset
+      setWeeklyApiData(response.data.data);
+      setError(null);
+    } catch (err) {
+      console.error('Error fetching weekly data:', err);
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    fetchWeeklyData();
-  }, [currentWeekOffset]);
-
+  fetchWeeklyData();
+}, [currentWeekOffset]); // ✅ already depends on offset — just needed backend to receive it
   useEffect(() => {
     getAllSubjects();
   }, []);
@@ -232,17 +229,32 @@ const WeeklySummary = () => {
     );
   }
 
-  if (!weeklyApiData || !weeklyApiData.plans || weeklyApiData.plans.length === 0) {
-    return (
-      <div className="min-h-screen p-6 bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <Calendar className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-          <p className="text-gray-900 font-semibold mb-2">No data available</p>
-          <p className="text-gray-600">Start planning your study schedule to see your weekly summary!</p>
-        </div>
+if (!weeklyApiData || !weeklyApiData.plans || weeklyApiData.plans.length === 0) {
+  return (
+    <div className="min-h-screen p-6 bg-gray-50 flex items-center justify-center">
+      <div className="text-center">
+        <Calendar className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+        <p className="text-gray-900 font-semibold mb-2">No data available</p>
+        <p className="text-gray-600 mb-6">
+          {currentWeekOffset < 0
+            ? 'No study data found for this week.'
+            : 'Start planning your study schedule to see your weekly summary!'}
+        </p>
+
+        {/* Only show if viewing a past week */}
+        {currentWeekOffset < 0 && (
+          <button
+            onClick={() => setCurrentWeekOffset(0)}
+            className="flex items-center gap-2 mx-auto bg-indigo-600 text-white px-6 py-3 rounded-xl font-semibold hover:bg-indigo-700 transition-colors"
+          >
+            <ChevronRight className="w-5 h-5" />
+            Back to Current Week
+          </button>
+        )}
       </div>
-    );
-  }
+    </div>
+  );
+}
 
   return (
     <div className="min-h-screen p-6 bg-gray-50">
