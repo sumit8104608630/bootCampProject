@@ -30,6 +30,7 @@
     "path": "^0.12.7",
     "react-router-dom": "^7.10.1",
     "redis": "^5.10.0",
-    "resend": "^6.9.2"
+    "resend": "^6.9.2",
+    "streamifier": "^0.1.1"
   }
 }

@@ -30,38 +30,27 @@ const userRegistration = asyncHandler(async (req, res) => {
   try {
     const { name, email, password } = req.body;
 
-    // Validate all fields
-    if ([name, email, password].some(item => item === "")) {
+    if ([name, email, password].some(item => !item || item.trim() === "")) {
       return res.status(400).json(new apiResponse(400, "", "Please fill all the details"));
     }
 
-    // Check if user already exists
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(400).json(new apiResponse(400, {}, "Email already exists"));
     }
 
-    // Validate profile photo
-    if (!req.file || !req.file.filename) {
+    if (!req.file || !req.file.buffer) {                          // ✅ changed: buffer instead of filename
       return res.status(400).json(new apiResponse(400, "", "Please upload your profile photo"));
     }
 
-    // Local temp path for uploaded file
-    const localPath = path.join(__dirname, `../public/temp/${req.file.filename}`);
+    const uploadedImage = await uploadFile(req.file.buffer);      // ✅ changed: buffer instead of localPath
 
-    // Upload to Cloudinary
-    const uploadedImage = await uploadFile(localPath);
-
-    // Create user object
-    const user = {
+    await User.create({
       name,
       email,
-      password,  // Make sure password is hashed in the model
+      password,
       profilePhoto: uploadedImage.secure_url
-    };
-
-    // Save user in database
-    await User.create(user);
+    });
 
     return res.status(201).json(
       new apiResponse(201, "User created successfully")
@@ -72,7 +61,6 @@ const userRegistration = asyncHandler(async (req, res) => {
     return res.status(500).json(new apiResponse(500, {}, "Internal Server Error"));
   }
 });
-
 
 
 // user login functionality

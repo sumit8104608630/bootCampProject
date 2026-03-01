@@ -3,9 +3,8 @@ import { apiResponse } from "../util/apiResponse.js";
 import Subject from "../models/subject.model.js";
 import { v2 as cloudinary } from "cloudinary";
 import mongoose from "mongoose";
+import { uploadDocFiles } from "../util/cloudinary.js";
 
-
-// ── ADD SUBJECT ───────────────────────────────────────────────────────────────
 const addSubject = asyncHandler(async (req, res) => {
     try {
         const { id } = req.user;
@@ -19,22 +18,25 @@ const addSubject = asyncHandler(async (req, res) => {
 
         if (attachments && Array.isArray(attachments) && attachments.length > 0) {
             try {
-                const uploadPromises = attachments.map(async (file) => {
-                    if (!file.fileData || !file.fileName) return null;
-                    const uploaded = await cloudinary.uploader.upload(file.fileData, {
-                        resource_type: "auto",
-                        folder: "study_buddy/documents",
-                        public_id: `${Date.now()}-${file.fileName.split('.')[0]}`
-                    });
-                    return {
-                        fileURL: uploaded.secure_url,
-                        fileName: file.fileName,
-                        fileType: file.fileType,
-                        fileSize: file.fileSize
-                    };
+                // Convert base64 strings to buffers
+                const buffers = attachments.map(file => {
+                    const base64Data = file.fileData.split(";base64,").pop(); // strip metadata
+                    return Buffer.from(base64Data, "base64");
                 });
-                const results = await Promise.all(uploadPromises);
-                uploadedAttachments = results.filter(r => r !== null);
+
+                const uploadResults = await uploadDocFiles(buffers); // ✅ buffer upload
+
+                if (!uploadResults.success) {
+                    return res.status(400).json(new apiResponse(400, {}, "File upload failed"));
+                }
+
+                uploadedAttachments = uploadResults.uploaded.map((result, index) => ({
+                    fileURL: result.cloudinaryUrl,
+                    fileName: attachments[index].fileName,
+                    fileType: attachments[index].fileType,
+                    fileSize: attachments[index].fileSize
+                }));
+
             } catch (uploadError) {
                 console.error("Cloudinary upload error:", uploadError);
                 return res.status(400).json(new apiResponse(400, {}, "File upload failed"));
@@ -65,100 +67,82 @@ const addSubject = asyncHandler(async (req, res) => {
 });
 
 
-// ── UPDATE SUBJECT ────────────────────────────────────────────────────────────
+
 const updateSubject = asyncHandler(async (req, res) => {
     try {
         const { id: userId } = req.user;
         const { subjectId } = req.params;
-        const { subjectName, hoursPerWeek, hoursPerDay, color, completionDate, attachments } = req.body;
+        const { subjectName, hoursPerWeek, hoursPerDay, color, completionDate } = req.body;
+
+        // existingAttachments = JSON string of already uploaded files sent from frontend
+        const existingAttachments = req.body.existingAttachments
+            ? JSON.parse(req.body.existingAttachments)
+            : [];
 
         if (!mongoose.Types.ObjectId.isValid(subjectId)) {
             return res.status(400).json(new apiResponse(400, {}, "Invalid subject ID"));
         }
 
-        // Make sure subject belongs to this user
         const subject = await Subject.findOne({ _id: subjectId, userId });
         if (!subject) {
             return res.status(404).json(new apiResponse(404, {}, "Subject not found"));
         }
 
-        // ── Handle attachments ───────────────────────────────────────────────
-        // attachments sent from frontend can be a mix of:
-        //   - existing ones (have fileURL, no fileData)  → keep as-is
-        //   - new ones      (have fileData)              → upload to Cloudinary
-        let finalAttachments = [];
+        // ── Handle new file uploads ──────────────────────────────────────────
+        let newlyUploadedAttachments = [];
 
-        if (attachments && Array.isArray(attachments)) {
-            const uploadPromises = attachments.map(async (file) => {
-                // Already uploaded — just keep it
-                if (file.fileURL && !file.fileData) {
-                    return {
-                        fileURL: file.fileURL,
-                        fileName: file.fileName,
-                        fileType: file.fileType,
-                        fileSize: file.fileSize,
-                        uploadedAt: file.uploadedAt
-                    };
+        if (req.files && req.files.length > 0) {
+            try {
+                const uploadResults = await uploadDocFiles(req.files.map(f => f.buffer)); // ✅ buffer
+
+                if (uploadResults.success) {
+                    newlyUploadedAttachments = uploadResults.uploaded.map((result, index) => ({
+                        fileURL: result.cloudinaryUrl,
+                        fileName: req.files[index].originalname,
+                        fileType: req.files[index].mimetype,
+                        fileSize: req.files[index].size
+                    }));
                 }
-
-                // New file — upload to Cloudinary
-                if (file.fileData && file.fileName) {
-                    try {
-                        const uploaded = await cloudinary.uploader.upload(file.fileData, {
-                            resource_type: "auto",
-                            folder: "study_buddy/documents",
-                            public_id: `${Date.now()}-${file.fileName.split('.')[0]}`
-                        });
-                        return {
-                            fileURL: uploaded.secure_url,
-                            fileName: file.fileName,
-                            fileType: file.fileType,
-                            fileSize: file.fileSize
-                        };
-                    } catch (err) {
-                        console.error("Cloudinary upload error during update:", err);
-                        return null;
-                    }
-                }
-
-                return null;
-            });
-
-            const results = await Promise.all(uploadPromises);
-            finalAttachments = results.filter(r => r !== null);
-
-            // Delete Cloudinary files that were removed by the user
-            const oldURLs = subject.attachments.map(a => a.fileURL).filter(Boolean);
-            const newURLs = finalAttachments.map(a => a.fileURL).filter(Boolean);
-            const removedURLs = oldURLs.filter(url => !newURLs.includes(url));
-
-            if (removedURLs.length > 0) {
-                await Promise.allSettled(removedURLs.map(async (url) => {
-                    try {
-                        const urlParts = url.split('/');
-                        const publicIdWithExt = urlParts.slice(urlParts.indexOf('study_buddy')).join('/');
-                        const publicId = publicIdWithExt.replace(/\.[^/.]+$/, '');
-                        await cloudinary.uploader.destroy(publicId, { resource_type: "auto" });
-                    } catch (err) {
-                        console.error("Cloudinary cleanup error:", err);
-                    }
-                }));
+            } catch (uploadError) {
+                console.error("Cloudinary upload error during update:", uploadError);
+                return res.status(400).json(new apiResponse(400, {}, "File upload failed"));
             }
         }
 
-        // ── Build update object (only update fields that were sent) ──────────
+        // ── Merge existing + newly uploaded attachments ──────────────────────
+        const finalAttachments = [...existingAttachments, ...newlyUploadedAttachments];
+
+        // ── Delete removed attachments from Cloudinary ───────────────────────
+        const oldURLs = subject.attachments.map(a => a.fileURL).filter(Boolean);
+        const newURLs = finalAttachments.map(a => a.fileURL).filter(Boolean);
+        const removedURLs = oldURLs.filter(url => !newURLs.includes(url));
+
+        if (removedURLs.length > 0) {
+            await Promise.allSettled(removedURLs.map(async (url) => {
+                try {
+                    const urlParts = url.split('/');
+                    const publicIdWithExt = urlParts.slice(urlParts.indexOf('study_buddy')).join('/');
+                    const publicId = publicIdWithExt.replace(/\.[^/.]+$/, '');
+                    await cloudinary.uploader.destroy(publicId, { resource_type: "auto" });
+                } catch (err) {
+                    console.error("Cloudinary cleanup error:", err);
+                }
+            }));
+        }
+
+        // ── Build update object ───────────────────────────────────────────────
         const updateFields = {};
-        if (subjectName  !== undefined) updateFields.subjectName  = subjectName;
-        if (hoursPerWeek !== undefined) updateFields.hoursPerWeek = hoursPerWeek;
-        if (hoursPerDay  !== undefined) updateFields.hoursPerDay  = hoursPerDay;
-        if (color        !== undefined) updateFields.color        = color;
+        if (subjectName    !== undefined) updateFields.subjectName    = subjectName;
+        if (hoursPerWeek   !== undefined) updateFields.hoursPerWeek   = hoursPerWeek;
+        if (hoursPerDay    !== undefined) updateFields.hoursPerDay    = hoursPerDay;
+        if (color          !== undefined) updateFields.color          = color;
         if (completionDate !== undefined) updateFields.completionDate = completionDate || null;
-        if (attachments  !== undefined) updateFields.attachments  = finalAttachments;
+        updateFields.attachments = finalAttachments;
 
         const updatedSubject = await Subject.findByIdAndUpdate(
             subjectId,
             { $set: updateFields },
-            { new: true, runValidators: true }   // return updated doc + run schema validators
+            { new: true, runValidators: true }
         );
 
         return res.status(200).json(new apiResponse(200, { subject: updatedSubject }, "Subject updated successfully"));
@@ -172,8 +156,6 @@ const updateSubject = asyncHandler(async (req, res) => {
         return res.status(500).json(new apiResponse(500, {}, "Internal Server Error"));
     }
 });
-
-
 // ── LOG STUDY HOURS (increment totalHoursStudied) ─────────────────────────────
 const logStudyHours = asyncHandler(async (req, res) => {
     try {

@@ -1,116 +1,69 @@
-// Import Cloudinary API and File System module
 import { v2 as cloudinary } from "cloudinary";
-import fs from "fs"
-import dotenv from "dotenv"
-dotenv.config({path:"./.env"})
+import streamifier from "streamifier";
+import dotenv from "dotenv";
+dotenv.config({ path: "./.env" });
 
-// Cloudinary configuration
 cloudinary.config({
-    cloud_name: process.env.CLOUD_NAME, // Cloudinary cloud name from environment variables
-    api_key: process.env.API_KEY,       // Cloudinary API key from environment variables
-    api_secret: process.env.API_SECRET  // Cloudinary API secret from environment variables
+    cloud_name: process.env.CLOUD_NAME,
+    api_key: process.env.API_KEY,
+    api_secret: process.env.API_SECRET
 });
 
-// Function to upload file to Cloudinary
-const uploadFile = async (localStorage) => {
+// Helper: upload buffer to cloudinary
+const uploadBuffer = (buffer, folder) => {
+    return new Promise((resolve, reject) => {
+        const stream = cloudinary.uploader.upload_stream(
+            { resource_type: "auto", folder },
+            (error, result) => {
+                if (error) reject(error);
+                else resolve(result);
+            }
+        );
+        streamifier.createReadStream(buffer).pipe(stream);
+    });
+};
+
+const uploadFile = async (buffer) => {
     try {
-        // Check if local file path is provided
-        if (!localStorage) {
-            return "Please provide a valid file path.";
-        }
- 
-        // Upload file to Cloudinary
-        const uploaded = await cloudinary.uploader.upload(localStorage, { resource_type: "auto" , folder: "study_buddy/profilePhoto"});
- 
-
-        // Delete the local file after successful upload
-        fs.unlinkSync(localStorage);
-
-        return uploaded;
+        if (!buffer) return { error: "Please provide a valid file." };
+        return await uploadBuffer(buffer, "study_buddy/profilePhoto");
     } catch (error) {
         console.error("Cloudinary Upload Error:", error);
-
-        // Ensure file is deleted even if upload fails
-        if (fs.existsSync(localStorage)) {
-            fs.unlinkSync(localStorage);
-            console.log("Local file deleted due to upload error.");
-        }
-
-        return { error: "Upload failed. Please try again." }; // ✅ Return error message
+        return { error: "Upload failed. Please try again." };
     }
 };
 
-const uploadImageFile = async (localStorage) => {
+const uploadImageFile = async (buffer) => {
     try {
-        // Check if local file path is provided
-        if (!localStorage) {
-            return "Please provide a valid file path.";
-        }
- 
-        // Upload file to Cloudinary
-        const uploaded = await cloudinary.uploader.upload(localStorage, { resource_type: "auto" , folder: "study_buddy/images"});
- 
-
-        // Delete the local file after successful upload
-        fs.unlinkSync(localStorage);
-
-        return uploaded;
+        if (!buffer) return { error: "Please provide a valid file." };
+        return await uploadBuffer(buffer, "study_buddy/images");
     } catch (error) {
         console.error("Cloudinary Upload Error:", error);
-
-        // Ensure file is deleted even if upload fails
-        if (fs.existsSync(localStorage)) {
-            fs.unlinkSync(localStorage);
-            console.log("Local file deleted due to upload error.");
-        }
-
-        return { error: "Upload failed. Please try again." }; // ✅ Return error message
+        return { error: "Upload failed. Please try again." };
     }
 };
 
-const uploadDocFiles = async (localStoragePaths) => {
+const uploadDocFiles = async (buffers) => {
     try {
-        if (!localStoragePaths || !Array.isArray(localStoragePaths) || localStoragePaths.length === 0) {
-            return { error: "Please provide a valid array of file paths." };
+        if (!buffers || !Array.isArray(buffers) || buffers.length === 0) {
+            return { error: "Please provide a valid array of file buffers." };
         }
 
-        // Upload all files in parallel
-        const uploadPromises = localStoragePaths.map(async (filePath) => {
+        const uploadPromises = buffers.map(async (buffer, index) => {
             try {
-                if (!fs.existsSync(filePath)) {
-                    throw new Error("File not found");
-                }
-
-                const uploaded = await cloudinary.uploader.upload(filePath, { 
-                    resource_type: "auto",
-                    folder: "study_buddy/documents"
-                });
-
-                // Delete local file after upload
-                fs.unlinkSync(filePath);
-
+                const uploaded = await uploadBuffer(buffer, "study_buddy/documents");
                 return {
                     success: true,
-                    originalPath: filePath,
+                    index,
                     cloudinaryUrl: uploaded.secure_url,
                     publicId: uploaded.public_id
                 };
             } catch (error) {
-                // Clean up file on error
-                if (fs.existsSync(filePath)) {
-                    fs.unlinkSync(filePath);
-                }
-                
-                return {
-                    success: false,
-                    originalPath: filePath,
-                    error: error.message
-                };
+                return { success: false, index, error: error.message };
             }
         });
 
         const results = await Promise.all(uploadPromises);
-        
         const uploaded = results.filter(r => r.success);
         const errors = results.filter(r => !r.success);
 
@@ -119,71 +72,35 @@ const uploadDocFiles = async (localStoragePaths) => {
             uploaded,
             errors: errors.length > 0 ? errors : undefined,
             summary: {
-                total: localStoragePaths.length,
+                total: buffers.length,
                 successful: uploaded.length,
                 failed: errors.length
             }
         };
-
     } catch (error) {
         console.error("Upload Process Error:", error);
         return { error: "Upload process failed. Please try again." };
     }
 };
 
-const uploadVideoFile = async (localStorage) => {
+const uploadVideoFile = async (buffer) => {
     try {
-        // Check if local file path is provided
-        if (!localStorage) {
-            return "Please provide a valid file path.";
-        }
- 
-        // Upload file to Cloudinary
-        const uploaded = await cloudinary.uploader.upload(localStorage, { resource_type: "auto" , folder: "study_buddy/videos"});
- 
-
-        // Delete the local file after successful upload
-        fs.unlinkSync(localStorage);
-
-        return uploaded;
+        if (!buffer) return { error: "Please provide a valid file." };
+        return await uploadBuffer(buffer, "study_buddy/videos");
     } catch (error) {
         console.error("Cloudinary Upload Error:", error);
-
-        // Ensure file is deleted even if upload fails
-        if (fs.existsSync(localStorage)) {
-            fs.unlinkSync(localStorage);
-            console.log("Local file deleted due to upload error.");
-        }
-
-        return { error: "Upload failed. Please try again." }; // ✅ Return error message
+        return { error: "Upload failed. Please try again." };
     }
 };
 
-const uploadGroupImageFile = async (localStorage) => {
+const uploadGroupImageFile = async (buffer) => {
     try {
-        // Check if local file path is provided
-        if (!localStorage) {
-            return "Please provide a valid file path.";
-        }
- 
-        // Upload file to Cloudinary
-        const uploaded = await cloudinary.uploader.upload(localStorage, { resource_type: "auto" , folder: "study_buddy/GroupProfileImages"});
- 
-
-        // Delete the local file after successful upload
-        fs.unlinkSync(localStorage);
-
-        return uploaded;
+        if (!buffer) return { error: "Please provide a valid file." };
+        return await uploadBuffer(buffer, "study_buddy/GroupProfileImages");
     } catch (error) {
         console.error("Cloudinary Upload Error:", error);
-
-        // Ensure file is deleted even if upload fails
-        if (fs.existsSync(localStorage)) {
-            fs.unlinkSync(localStorage);
-            console.log("Local file deleted due to upload error.");
-        }
-
-        return { error: "Upload failed. Please try again." }; // ✅ Return error message
+        return { error: "Upload failed. Please try again." };
     }
 };
-export { uploadFile,uploadImageFile,uploadDocFiles,uploadVideoFile ,uploadGroupImageFile};
+
+export { uploadFile, uploadImageFile, uploadDocFiles, uploadVideoFile, uploadGroupImageFile };
