@@ -67,17 +67,11 @@ const addSubject = asyncHandler(async (req, res) => {
 });
 
 
-
 const updateSubject = asyncHandler(async (req, res) => {
     try {
         const { id: userId } = req.user;
         const { subjectId } = req.params;
-        const { subjectName, hoursPerWeek, hoursPerDay, color, completionDate } = req.body;
-
-        // existingAttachments = JSON string of already uploaded files sent from frontend
-        const existingAttachments = req.body.existingAttachments
-            ? JSON.parse(req.body.existingAttachments)
-            : [];
+        const { subjectName, hoursPerWeek, hoursPerDay, color, completionDate, attachments } = req.body;
 
         if (!mongoose.Types.ObjectId.isValid(subjectId)) {
             return res.status(400).json(new apiResponse(400, {}, "Invalid subject ID"));
@@ -88,29 +82,47 @@ const updateSubject = asyncHandler(async (req, res) => {
             return res.status(404).json(new apiResponse(404, {}, "Subject not found"));
         }
 
-        // ── Handle new file uploads ──────────────────────────────────────────
-        let newlyUploadedAttachments = [];
+        // ── Handle attachments ───────────────────────────────────────────────
+        let finalAttachments = [];
 
-        if (req.files && req.files.length > 0) {
+        if (attachments && Array.isArray(attachments) && attachments.length > 0) {
             try {
-                const uploadResults = await uploadDocFiles(req.files.map(f => f.buffer)); // ✅ buffer
+                const uploadPromises = attachments.map(async (file) => {
+                    // Already uploaded — keep as-is (has fileURL, no fileData)
+                    if (file.fileURL && !file.fileData) {
+                        return {
+                            fileURL: file.fileURL,
+                            fileName: file.fileName,
+                            fileType: file.fileType,
+                            fileSize: file.fileSize,
+                            uploadedAt: file.uploadedAt
+                        };
+                    }
 
-                if (uploadResults.success) {
-                    newlyUploadedAttachments = uploadResults.uploaded.map((result, index) => ({
-                        fileURL: result.cloudinaryUrl,
-                        fileName: req.files[index].originalname,
-                        fileType: req.files[index].mimetype,
-                        fileSize: req.files[index].size
-                    }));
-                }
+                    // New file — convert base64 to buffer and upload
+                    if (file.fileData && file.fileName) {
+                        const base64Data = file.fileData.split(";base64,").pop(); // strip metadata
+                        const buffer = Buffer.from(base64Data, "base64");
+                        const uploaded = await uploadBuffer(buffer, "study_buddy/documents");
+                        return {
+                            fileURL: uploaded.secure_url,
+                            fileName: file.fileName,
+                            fileType: file.fileType,
+                            fileSize: file.fileSize
+                        };
+                    }
+
+                    return null;
+                });
+
+                const results = await Promise.all(uploadPromises);
+                finalAttachments = results.filter(r => r !== null);
+
             } catch (uploadError) {
                 console.error("Cloudinary upload error during update:", uploadError);
                 return res.status(400).json(new apiResponse(400, {}, "File upload failed"));
             }
         }
-
-        // ── Merge existing + newly uploaded attachments ──────────────────────
-        const finalAttachments = [...existingAttachments, ...newlyUploadedAttachments];
 
         // ── Delete removed attachments from Cloudinary ───────────────────────
         const oldURLs = subject.attachments.map(a => a.fileURL).filter(Boolean);
@@ -137,7 +149,7 @@ const updateSubject = asyncHandler(async (req, res) => {
         if (hoursPerDay    !== undefined) updateFields.hoursPerDay    = hoursPerDay;
         if (color          !== undefined) updateFields.color          = color;
         if (completionDate !== undefined) updateFields.completionDate = completionDate || null;
-        updateFields.attachments = finalAttachments;
+        if (attachments    !== undefined) updateFields.attachments    = finalAttachments;
 
         const updatedSubject = await Subject.findByIdAndUpdate(
             subjectId,
