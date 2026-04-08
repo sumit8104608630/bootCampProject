@@ -1,9 +1,10 @@
 import { asyncHandler } from "../util/asyncHandler.js";
 import { apiResponse } from "../util/apiResponse.js";
 import Subject from "../models/subject.model.js";
+import { dailyPlan } from "../models/dailyPlan.model.js";
 import { v2 as cloudinary } from "cloudinary";
 import mongoose from "mongoose";
-import { uploadDocFiles } from "../util/cloudinary.js";
+import { uploadDocFiles, uploadBuffer } from "../util/cloudinary.js";
 
 const addSubject = asyncHandler(async (req, res) => {
     try {
@@ -220,7 +221,7 @@ const deleteSubject = asyncHandler(async (req, res) => {
             return res.status(404).json(new apiResponse(404, {}, "Subject not found"));
         }
 
-        // Clean up Cloudinary attachments
+        // 1. Clean up Cloudinary attachments
         if (subject.attachments?.length > 0) {
             await Promise.allSettled(subject.attachments.map(async (att) => {
                 if (!att.fileURL) return;
@@ -235,6 +236,24 @@ const deleteSubject = asyncHandler(async (req, res) => {
             }));
         }
 
+        // 2. Remove subject from all daily plans and update stats
+        const plans = await dailyPlan.find({ userId, "tasks.subjectId": subjectId });
+        
+        for (const plan of plans) {
+            plan.tasks = plan.tasks.filter(t => t.subjectId.toString() !== subjectId.toString());
+            
+            // Recalculate stats
+            plan.stats = {
+                totalPlanned: plan.tasks.reduce((sum, t) => sum + (t.plannedHours || 0), 0),
+                totalStudied: plan.tasks.reduce((sum, t) => sum + (t.studiedHours || 0), 0),
+                totalTasks: plan.tasks.length,
+                completedTasks: plan.tasks.filter((t) => t.completed).length,
+            };
+            
+            await plan.save();
+        }
+
+        // 3. Delete the subject
         await Subject.findByIdAndDelete(subjectId);
 
         return res.status(200).json(new apiResponse(200, {}, "Subject deleted successfully"));

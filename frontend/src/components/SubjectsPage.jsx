@@ -64,7 +64,7 @@ const showToast = (message, type = 'error') => {
   setToast({ message, type });
   setTimeout(() => setToast(null), 3000);
 };
-  const { addingSubject, allSubjects, fetchingSubjects, getAllSubjects, addingLoad } = subjectStore();
+  const { addingSubject, allSubjects, fetchingSubjects, getAllSubjects, addingLoad, deleteSubject, deletingId } = subjectStore();
   
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -244,11 +244,12 @@ const handleFileUpload = async (e) => {
   };
 
   const handleDelete = async (id) => {
-    if (confirm('Are you sure you want to delete this subject?')) {
-      // TODO: Call delete API
-      // await deleteSubject(id);
-      // await getAllSubjects();
-      console.log('Delete subject:', id);
+    try {
+      await deleteSubject(id);
+      showToast('Subject deleted successfully', 'success');
+    } catch (error) {
+      console.error('Error deleting subject:', error);
+      showToast('Failed to delete subject', 'error');
     }
   };
 
@@ -659,8 +660,13 @@ const formatHoursStudied = (totalHours) => {
                           onClick={() => handleDelete(subject._id || subject.id)}
                           className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
                           aria-label="Delete subject"
+                          disabled={deletingId === (subject._id || subject.id)}
                         >
-                          <Trash2 className="w-4 h-4 text-gray-500 hover:text-red-600" />
+                          {deletingId === (subject._id || subject.id) ? (
+                            <Loader2 className="w-4 h-4 animate-spin text-red-500" />
+                          ) : (
+                            <Trash2 className="w-4 h-4 text-gray-500 hover:text-red-600" />
+                          )}
                         </button>
                       </div>
                     </div>

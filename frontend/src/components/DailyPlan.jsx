@@ -235,7 +235,11 @@ const DailyTasksPage = () => {
   const previewSchedule    = getPreviewSchedule();
   const getUnscheduledSubjects = () => {
     const ids = todayTasks.map(t => t.subjectId);
-    return allSubjects.filter(s => !ids.includes(s._id) && !ids.includes(s.id));
+    return allSubjects.filter(s => 
+      !ids.includes(s._id) && 
+      !ids.includes(s.id) && 
+      (s.completionPercentage < 100) // Only show subjects that are not yet 100% completed
+    );
   };
   const unscheduledSubjects  = getUnscheduledSubjects();
   const allSubjectsScheduled = allSubjects.length > 0 && unscheduledSubjects.length === 0;
@@ -247,24 +251,10 @@ const DailyTasksPage = () => {
       return;
     }
 
-    let timeToUse = startTime || (() => {
+    const timeToUse = startTime || (() => {
       const now  = new Date();
       return `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
     })();
-
-    if (todayTasks.length > 0) {
-      const lastEndTime = todayTasks[todayTasks.length - 1].endTime;
-      const parseTime12 = (str) => {
-        const [time, period] = str.split(' ');
-        let [hh, mm] = time.split(':').map(Number);
-        if (period === 'PM' && hh !== 12) hh += 12;
-        if (period === 'AM' && hh === 12) hh = 0;
-        return { hh, mm };
-      };
-      const { hh, mm } = parseTime12(lastEndTime);
-      const d = new Date(); d.setHours(hh, mm + 15, 0, 0);
-      timeToUse = `${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
-    }
 
     const selectedData = selectedSubjects
       .map(s => allSubjects.find(sub => sub._id === s.subjectId || sub.id === s.subjectId))
@@ -315,10 +305,31 @@ const DailyTasksPage = () => {
   };
 
   // ── Modal helpers ──────────────────────────────────────────────────────────
+  const parseTime12 = (str) => {
+    const [time, period] = str.split(' ');
+    let [hh, mm] = time.split(':').map(Number);
+    if (period === 'PM' && hh !== 12) hh += 12;
+    if (period === 'AM' && hh === 12) hh = 0;
+    return { hh, mm };
+  };
+
   const openGeneratePlanModal = () => {
     setShowModal(true);
     setSelectedSubjects([]);
+
+    // Initialize startTime to suggested value
+    if (todayTasks.length > 0) {
+      const lastEndTime = todayTasks[todayTasks.length - 1].endTime;
+      const { hh, mm } = parseTime12(lastEndTime);
+      const d = new Date();
+      d.setHours(hh, mm + 15, 0, 0); // suggested time = lastEndTime + 15 min break
+      setStartTime(`${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`);
+    } else {
+      const now = new Date();
+      setStartTime(`${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`);
+    }
   };
+
   const addSubjectToSchedule       = () => setSelectedSubjects(p => [...p, { subjectId: null }]);
   const removeSubjectFromSchedule  = (i) => setSelectedSubjects(p => p.filter((_, idx) => idx !== i));
   const updateSelectedSubject      = (i, id) => {
@@ -329,13 +340,6 @@ const DailyTasksPage = () => {
 
   // ── Effects ────────────────────────────────────────────────────────────────
   useEffect(() => { getAllSubjects(); }, []);
-
-  useEffect(() => {
-    if (showModal && !startTime) {
-      const now = new Date();
-      setStartTime(`${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`);
-    }
-  }, [showModal]);
 
   useEffect(() => {
     fetchTodaysPlan();

@@ -130,6 +130,7 @@ const [saveSuccess, setSaveSuccess] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [roadmapText, setRoadmapText] = useState('');
   const [error, setError] = useState('');
+  const [showErrorModal, setShowErrorModal] = useState(false);
 
   const qualificationOptions = [
     { value: 'grade_10', label: 'Grade 10 (Matriculation)' },
@@ -189,7 +190,12 @@ const [saveSuccess, setSaveSuccess] = useState(false);
       setRoadmapText(typeof text === 'string' ? text : JSON.stringify(text));
     } catch (err) {
       console.error(err);
-      setError(err?.response?.data?.message || 'Something went wrong. Please try again.');
+      if (err.response?.status === 429) {
+        setError('your token has expired');
+        setShowErrorModal(true);
+      } else {
+        setError(err?.response?.data?.message || 'Something went wrong. Please try again.');
+      }
     } finally {
       setGenerating(false);
     }
@@ -499,6 +505,26 @@ const [saveSuccess, setSaveSuccess] = useState(false);
         )}
 
       </div>
+      {/* Error Modal */}
+      {showErrorModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl shadow-2xl max-w-sm w-full p-8 text-center transform animate-in zoom-in-95 duration-200">
+            <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
+              <AlertCircle className="w-10 h-10 text-red-600" />
+            </div>
+            <h3 className="text-2xl font-bold text-gray-900 mb-2">Token Expired</h3>
+            <p className="text-gray-600 mb-8 leading-relaxed">
+              Your AI roadmap generation quota has been reached for now. Please try again later.
+            </p>
+            <button
+              onClick={() => setShowErrorModal(false)}
+              className="w-full bg-gray-900 text-white py-4 rounded-2xl font-bold hover:bg-gray-800 active:scale-[0.98] transition-all shadow-lg"
+            >
+              Got it
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

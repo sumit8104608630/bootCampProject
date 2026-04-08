@@ -1,6 +1,8 @@
 import express from "express";
 import {
     addSubject,
+    updateSubject,
+    logStudyHours,
     deleteSubject,
     getAllSubjects,
     get_dashboard_data
@@ -15,6 +17,19 @@ subjectRoutes.post(
     upload.single("attachments"),
     checkAuthenticationCookie("accessToken"),
     addSubject
+);
+
+subjectRoutes.put(
+    "/update_subject/:subjectId",
+    upload.array("attachments"), // Use array for multiple attachments if needed
+    checkAuthenticationCookie("accessToken"),
+    updateSubject
+);
+
+subjectRoutes.post(
+    "/log_hours/:subjectId",
+    checkAuthenticationCookie("accessToken"),
+    logStudyHours
 );
 
 subjectRoutes.delete(

@@ -9,6 +9,7 @@ import WeeklySummaryPage from '../components/WeeklySummary.jsx';
 import AIRoadmapGenerator from '../components/AIRoadmapGenerator.jsx';
 import RoadmapListPage from '../components/RoadmapRender.jsx';
 import SettingsPage from '../components/SettingsPage.jsx';
+import AiGeneratedInterviewQuestion from '../components/AiGeneratedInterviewQuestion.jsx';
 
 export default function Dashboard() {
   const { dash_board_data, dashLoading, get_dash_board_data } = subjectStore();
@@ -53,12 +54,15 @@ export default function Dashboard() {
     { icon: BarChart3, label: 'Weekly Summary' },
     { icon: Target, label: 'AI Roadmap' },
     { icon: Map, label: 'My Roadmaps' },
+        { icon: HelpCircle, label: 'AI  Interview Question' },
     { icon: Settings, label: 'Settings' },
   ];
 
   // Render content based on active menu
   const renderContent = () => {
     switch (activeMenu) {
+      case 'AI  Interview Question':
+        return <AiGeneratedInterviewQuestion />;
       case 'Subjects List':
         return <SubjectsPage />;
       case 'Daily Plan':

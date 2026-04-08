@@ -103,28 +103,22 @@ const updateTaskProgress = asyncHandler(async (req, res) => {
   plan.stats = updatedStats;
   await plan.save();
 
-  // ── Update Subject.totalHoursStudied on STOP / COMPLETE only ──────────────
-  // We never update while the timer is running to avoid double-counting.
-  let updatedSubject = null;
-  const shouldUpdateSubject =
-    timerRunning === false && hoursDifference !== 0;
-
-  if (shouldUpdateSubject) {
-    updatedSubject = await Subject.findOne({ _id: subjectId, userId: id });
-    if (updatedSubject) {
-      updatedSubject.totalHoursStudied = Math.max(
-        0,
-        (updatedSubject.totalHoursStudied || 0) + hoursDifference
-      );
-      await updatedSubject.save();
-    }
+  // ── Update Subject.totalHoursStudied ──────────────────────────────────────
+  // We update this on every progress update to keep it in sync.
+  let currentSubject = await Subject.findOne({ _id: subjectId, userId: id });
+  
+  if (currentSubject && hoursDifference !== 0) {
+    currentSubject.totalHoursStudied = Math.max(
+      0,
+      (currentSubject.totalHoursStudied || 0) + hoursDifference
+    );
+    await currentSubject.save();
   }
 
   return res.status(200).json(
     new apiResponse(
       200,
       {
-        
         subjectId,
         studiedHours,
         timerSeconds,
@@ -132,7 +126,7 @@ const updateTaskProgress = asyncHandler(async (req, res) => {
         timerRunning,
         timerStartedAt,
         stats: updatedStats,
-        totalHoursStudied: updatedSubject?.totalHoursStudied,
+        totalHoursStudied: currentSubject?.totalHoursStudied,
       },
       "Task progress updated successfully"
     )

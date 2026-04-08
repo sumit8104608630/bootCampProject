@@ -1,6 +1,10 @@
 import express from "express";
 import { checkAuthenticationCookie } from "../middlewares/authentication.middleware.js";
-import {ai_Road_map_generater,save_road_map,show_all_road_map} from "../controllers/aiRoadmap.controller.js"
+import {
+  ai_Road_map_generater,
+  save_road_map,
+  show_all_road_map,
+} from "../controllers/aiRoadmap.controller.js"
 const aiRouter=express.Router();
 
 aiRouter.post("/road_map_generate",checkAuthenticationCookie("accessToken"),ai_Road_map_generater);

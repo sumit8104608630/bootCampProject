@@ -103,4 +103,4 @@ const uploadGroupImageFile = async (buffer) => {
     }
 };
 
-export { uploadFile, uploadImageFile, uploadDocFiles, uploadVideoFile, uploadGroupImageFile };
+export { uploadBuffer, uploadFile, uploadImageFile, uploadDocFiles, uploadVideoFile, uploadGroupImageFile };
